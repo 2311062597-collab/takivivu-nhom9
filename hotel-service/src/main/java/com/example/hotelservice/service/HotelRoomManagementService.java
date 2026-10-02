@@ -1,0 +1,26 @@
+package com.example.hotelservice.service;
+import com.example.hotelservice.dto.*;
+import com.example.hotelservice.entity.*;
+import com.example.hotelservice.repository.*;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.dao.DataIntegrityViolationException;
+import java.util.List;
+@Service public class HotelRoomManagementService {
+ private final KhachSanRepository hotels;
+ private final LoaiPhongRepository types;
+ private final PhongCuTheRepository rooms;
+ private final PhysicalRoomHoldRepository holds;
+ public HotelRoomManagementService(KhachSanRepository hotels,LoaiPhongRepository types,PhongCuTheRepository rooms,PhysicalRoomHoldRepository holds){this.hotels=hotels;this.types=types;this.rooms=rooms;this.holds=holds;}
+ private KhachSan hotel(Long userId){return hotels.findByNhaCungCapId(userId).stream().findFirst().orElseThrow(()->new IllegalArgumentException("Hãy hoàn thiện hồ sơ khách sạn"));}
+ private boolean blank(String s){return s==null||s.isBlank();}
+ private void complete(KhachSan h){if(h.getSoTang()==null||h.getSoTang()<1||blank(h.getQuanHuyen())||blank(h.getMoTa())||blank(h.getHinhAnh())||blank(h.getAnhGioiThieu())||blank(h.getTienNghi()))throw new IllegalArgumentException("Hãy hoàn thiện hồ sơ khách sạn trước");}
+ private LoaiPhong ownType(Long hotelId,Long typeId){LoaiPhong t=types.findById(typeId).orElseThrow(()->new IllegalArgumentException("Không tìm thấy loại phòng"));if(!hotelId.equals(t.getKhachSanId()))throw new IllegalArgumentException("Loại phòng không thuộc khách sạn của bạn");return t;}
+ private PhongCuThe ownRoom(Long hotelId,Long id){PhongCuThe r=rooms.findById(id).orElseThrow(()->new IllegalArgumentException("Không tìm thấy phòng"));if(!hotelId.equals(r.getKhachSanId()))throw new IllegalArgumentException("Phòng không thuộc khách sạn của bạn");return r;}
+ public List<LoaiPhong> types(Long userId){return types.findByKhachSanIdOrderByIdDesc(hotel(userId).getId());}
+ @Transactional public LoaiPhong saveType(Long userId,Long id,LoaiPhongRequest req){KhachSan h=hotel(userId);complete(h);String name=req.getTenLoaiPhong().trim();boolean duplicate=id==null?types.existsByKhachSanIdAndTenLoaiPhongIgnoreCase(h.getId(),name):types.existsByKhachSanIdAndTenLoaiPhongIgnoreCaseAndIdNot(h.getId(),name,id);if(duplicate)throw new IllegalArgumentException("Tên loại phòng đã tồn tại");LoaiPhong t=id==null?new LoaiPhong():ownType(h.getId(),id);t.setKhachSanId(h.getId());t.setTenLoaiPhong(name);t.setMoTa(req.getMoTa().trim());t.setDienTich(req.getDienTich());t.setSoNguoiLon(req.getSoNguoiLon());t.setSoTreEm(req.getSoTreEm());t.setLoaiGiuong(req.getLoaiGiuong().trim());t.setSoLuongGiuong(req.getSoLuongGiuong());t.setTienNghi(req.getTienNghi());t.setGiaCoBan(req.getGiaCoBan());t.setHinhAnh(req.getHinhAnh());t.setAnhThuVien(req.getAnhThuVien());t.setDangKinhDoanh(req.getDangKinhDoanh()==null||req.getDangKinhDoanh());t=types.save(t);for(PhongCuThe r:rooms.findByKhachSanIdOrderByTangAscSoPhongAsc(h.getId()))if(r.getLoaiPhongId().equals(t.getId())){r.setGiaMoiDem(t.getGiaCoBan());rooms.save(r);}return t;}
+ @Transactional public void deleteType(Long userId,Long id){LoaiPhong t=ownType(hotel(userId).getId(),id);if(rooms.existsByLoaiPhongId(id))throw new IllegalArgumentException("Loại phòng đang có phòng; hãy tạm ngừng kinh doanh");try{types.delete(t);types.flush();}catch(DataIntegrityViolationException e){throw new IllegalArgumentException("Không thể xóa loại phòng đang có dữ liệu liên quan");}}
+ public List<PhongCuThe> rooms(Long userId){return rooms.findByKhachSanIdOrderByTangAscSoPhongAsc(hotel(userId).getId());}
+ @Transactional public PhongCuThe saveRoom(Long userId,Long id,PhongCuTheRequest req){KhachSan h=hotel(userId);complete(h);if(req.getTang()>h.getSoTang())throw new IllegalArgumentException("Tầng vượt quá số tầng đã khai báo trong hồ sơ");LoaiPhong type=ownType(h.getId(),req.getLoaiPhongId());if(!Boolean.TRUE.equals(type.getDangKinhDoanh()))throw new IllegalArgumentException("Loại phòng đang ngừng kinh doanh");String number=req.getSoPhong().trim();boolean duplicate=id==null?rooms.existsByKhachSanIdAndSoPhongIgnoreCase(h.getId(),number):rooms.existsByKhachSanIdAndSoPhongIgnoreCaseAndIdNot(h.getId(),number,id);if(duplicate)throw new IllegalArgumentException("Số phòng đã tồn tại trong khách sạn");PhongCuThe r=id==null?new PhongCuThe():ownRoom(h.getId(),id);r.setKhachSanId(h.getId());r.setLoaiPhongId(type.getId());r.setSoPhong(number);r.setTang(req.getTang());r.setGiaMoiDem(type.getGiaCoBan());if(id==null)r.setHinhAnh(null);r.setDangHoatDong(req.getDangHoatDong()==null||req.getDangHoatDong());return rooms.save(r);}
+ @Transactional public void deleteRoom(Long userId,Long id){PhongCuThe r=ownRoom(hotel(userId).getId(),id);if(holds.existsByPhongCuTheId(id))throw new IllegalArgumentException("Phòng đã có lịch sử giữ/đặt; hãy tạm ngừng hoạt động");try{rooms.delete(r);rooms.flush();}catch(DataIntegrityViolationException e){throw new IllegalArgumentException("Phòng đã có dữ liệu đặt/giữ phòng, không thể xóa; hãy tạm ngừng phòng");}}
+}
