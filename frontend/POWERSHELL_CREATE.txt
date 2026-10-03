@@ -1,0 +1,9 @@
+# Nếu muốn tự tạo project từ đầu thay vì giải nén source đã gửi:
+npm create vite@latest takivivu-frontend -- --template react-ts
+cd takivivu-frontend
+npm install axios react-router-dom lucide-react
+
+# Sau đó thay source bằng các file trong gói takivivu-frontend.zip.
+# Chạy:
+npm install
+npm run dev

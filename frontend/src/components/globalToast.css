@@ -1,0 +1,9 @@
+.takivivu-toast-stack{position:fixed;right:20px;top:78px;z-index:2147483000;display:flex;flex-direction:column;gap:10px;width:min(380px,calc(100vw - 24px));pointer-events:none}
+.takivivu-toast{--toast-color:#2777e7;display:flex;align-items:flex-start;gap:12px;background:#fff;border:1px solid #e4eaf3;border-left:4px solid var(--toast-color);border-radius:11px;padding:14px 12px 14px 14px;box-shadow:0 7px 24px rgba(25,47,88,.14);pointer-events:auto;animation:takivivu-toast-enter .22s ease-out;overflow-wrap:anywhere}
+.takivivu-toast--success{--toast-color:#259b55}.takivivu-toast--warning{--toast-color:#efad18}.takivivu-toast--error{--toast-color:#db3445}
+.takivivu-toast-icon{width:28px;height:28px;flex-shrink:0;color:var(--toast-color)}
+.takivivu-toast-content{flex:1;min-width:0}.takivivu-toast-content strong{display:block;color:#172e50;font-size:14px;line-height:1.35}.takivivu-toast-content p{margin:4px 0 0;color:#61738d;font-size:12.5px;line-height:1.45}
+.takivivu-toast button{border:0;background:transparent;color:#64748b;cursor:pointer;padding:2px;flex-shrink:0}
+.takivivu-toast button:hover{color:#142b48}@keyframes takivivu-toast-enter{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
+@media(max-width:600px){.takivivu-toast-stack{right:12px;top:64px}}
+@media(prefers-reduced-motion:reduce){.takivivu-toast{animation:none}}

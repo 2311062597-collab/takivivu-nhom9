@@ -1,0 +1,7 @@
+Thay thế 3 file theo đúng đường dẫn trong ZIP tại thư mục gốc TAKIVIVU.
+Không cần thay đổi SQL.
+Chức năng một đơn chỉ chọn một phòng cụ thể vì Booking Service hiện không hỗ trợ nhiều physicalRoomId trong cùng một đơn. Chọn phòng khác sẽ thay thế phòng đang chọn.
+Ngày nhận, ngày trả và số khách chỉnh trực tiếp ở sơ đồ. Khi đổi ngày, dữ liệu phòng được truy vấn lại và phòng chọn cũ bị xóa.
+Nếu không có phòng: kiểm tra dữ liệu phong_cu_the trong hotel_db, trạng thái hoạt động của khách sạn/loại phòng/phòng, ngày và phản hồi API /api/hotels/{id}/physical-inventory?checkIn=...&checkOut=...
+Đã kiểm tra TypeScript (tsc -b). Không chạy được Vite build đầy đủ do native Rollup binary trong bản ZIP không tương thích môi trường Linux.
+Chưa kiểm thử tích hợp với database và các service đang chạy của bạn.
