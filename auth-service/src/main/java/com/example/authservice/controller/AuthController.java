@@ -4,6 +4,7 @@ import com.example.authservice.dto.*;
 import com.example.authservice.entity.TrangThaiDuyet;
 import com.example.authservice.entity.TrangThaiNguoiDung;
 import com.example.authservice.service.AuthService;
+import com.example.authservice.service.PasswordResetService;
 import com.example.authservice.service.ProviderLicenseStorageService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -23,13 +24,16 @@ import java.util.Map;
 public class AuthController {
 
     private final AuthService authService;
+    private final PasswordResetService passwordResetService;
     private final ProviderLicenseStorageService providerLicenseStorageService;
 
     public AuthController(
             AuthService authService,
+            PasswordResetService passwordResetService,
             ProviderLicenseStorageService providerLicenseStorageService
     ) {
         this.authService = authService;
+        this.passwordResetService = passwordResetService;
         this.providerLicenseStorageService = providerLicenseStorageService;
     }
 
@@ -152,6 +156,18 @@ public class AuthController {
     // =========================================================
     // LOGIN / TOKEN
     // =========================================================
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<Map<String, String>> forgotPassword(@Valid @RequestBody ForgotPasswordRequestDTO request) {
+        passwordResetService.request(request);
+        return ResponseEntity.ok(Map.of("message", "Nếu email tồn tại, chúng tôi đã gửi liên kết đặt lại mật khẩu."));
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<Map<String, String>> resetPassword(@Valid @RequestBody ResetPasswordRequestDTO request) {
+        passwordResetService.reset(request);
+        return ResponseEntity.ok(Map.of("message", "Đặt lại mật khẩu thành công."));
+    }
 
     @PostMapping("/login")
     public ResponseEntity<DangNhapResponseDTO>

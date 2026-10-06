@@ -1,4 +1,4 @@
-import { Bell, BriefcaseBusiness, ChevronDown, Facebook, Instagram, LogOut, Twitter, UserRound, Youtube } from 'lucide-react'
+import { Bell, BriefcaseBusiness, ChevronDown, Facebook, Gift, Instagram, LogOut, Star, Twitter, UserRound, Youtube } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import Logo from '../components/Logo'
@@ -81,7 +81,7 @@ export default function PublicLayout() {
             </button>
             {userMenuOpen && <div className="customer-user-dropdown-v7">
               <Link to={session.vaiTro === 'PROVIDER' ? '/provider/profile' : '/profile'} onClick={() => setUserMenuOpen(false)}><UserRound/> Hồ sơ của tôi</Link>
-              {session.vaiTro === 'CUSTOMER' && <Link to="/bookings" onClick={() => setUserMenuOpen(false)}><BriefcaseBusiness/> Đơn đặt dịch vụ</Link>}
+              {session.vaiTro === 'CUSTOMER' && <><Link to="/bookings" onClick={() => setUserMenuOpen(false)}><BriefcaseBusiness/> Đơn đặt dịch vụ</Link><Link to="/my-reviews" onClick={() => setUserMenuOpen(false)}><Star/> Đánh giá của tôi</Link><Link to="/my-promotions" onClick={() => setUserMenuOpen(false)}><Gift/> Voucher của tôi</Link></>}
               <Link to="/notifications" onClick={() => setUserMenuOpen(false)}><Bell/> Thông báo{unreadCount > 0 ? ` (${unreadCount > 99 ? '99+' : unreadCount})` : ''}</Link>
               <button type="button" className="customer-user-logout-v7" onClick={async () => { setUserMenuOpen(false); await logout(); navigate('/login', { replace: true }) }}><LogOut/> Đăng xuất</button>
             </div>}

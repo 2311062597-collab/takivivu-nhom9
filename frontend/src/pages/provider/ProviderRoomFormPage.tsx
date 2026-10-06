@@ -7,7 +7,6 @@ import { apiError } from '../../utils/format'
 import { Loading } from '../../components/UI'
 
 const ROOM_TYPES=['Deluxe','Suite','Standard','Twin','Family']
-const AMENITIES=['Wifi miễn phí','Điều hòa','TV','Tủ lạnh','Bàn làm việc','Phòng tắm riêng','Bồn tắm','Ban công','Nhìn ra biển','Nhìn ra thành phố']
 
 export default function ProviderRoomFormPage(){
   const navigate=useNavigate()
@@ -25,6 +24,7 @@ export default function ProviderRoomFormPage(){
 
   useEffect(()=>{hotelApi.mine().then(list=>{setHotels(list);setSelected(current=>current||list[0]?.id||0)}).catch(e=>setError(apiError(e))).finally(()=>setLoading(false))},[])
   const hotel=hotels.find(item=>item.id===selected)
+  const amenityOptions=useMemo(()=>Array.from(new Set((hotel?.tienNghi||'').split(',').map(v=>v.trim()).filter(Boolean))),[hotel?.tienNghi])
   const previews=useMemo(()=>files.map(file=>({file,url:URL.createObjectURL(file)})),[files])
   useEffect(()=>()=>previews.forEach(item=>URL.revokeObjectURL(item.url)),[previews])
   const addFiles=(event:ChangeEvent<HTMLInputElement>)=>{const next=Array.from(event.target.files||[]).filter(file=>file.type.startsWith('image/'));setFiles(current=>[...current,...next].slice(0,5));event.target.value=''}
@@ -34,7 +34,6 @@ export default function ProviderRoomFormPage(){
     setBusy(true);setError('')
     try{
       const created=await hotelApi.createRoom(selected,form)
-      try{localStorage.setItem(`takivivu_provider_room_extra_${created.id}`,JSON.stringify({roomType:roomType||'Deluxe',code:`${(roomType||'DEL').slice(0,3).toUpperCase()}-${String(created.id).padStart(3,'0')}`,amenities}))}catch{/* ignore */}
       navigate('/provider/rooms')
     }catch(e){setError(apiError(e))}finally{setBusy(false)}
   }
@@ -60,7 +59,7 @@ export default function ProviderRoomFormPage(){
         {previews.map((preview,index)=><div className="room-form-preview" key={`${preview.file.name}-${index}`}><img src={preview.url} alt={preview.file.name}/><button type="button" onClick={()=>setFiles(list=>list.filter((_,i)=>i!==index))}><X/></button></div>)}
         {Array.from({length:Math.max(0,5-previews.length)},(_,i)=><label className="room-form-slot" key={i}><Plus/><input type="file" accept="image/png,image/jpeg" onChange={addFiles}/></label>)}
       </div></section>
-      <section className="room-form-section"><h2>⚙ 3. Tiện nghi phòng <small>(tùy chọn)</small></h2><span className="room-form-caption">Chọn các tiện nghi có trong phòng</span><div className="room-form-amenities">{AMENITIES.map(item=><label key={item}><input type="checkbox" checked={amenities.includes(item)} onChange={()=>toggle(item)}/><span>✓</span>{item}</label>)}</div></section>
+      <section className="room-form-section"><h2>⚙ 3. Tiện nghi phòng <small>(tùy chọn)</small></h2><span className="room-form-caption">Chọn từ tiện nghi đã khai báo của khách sạn</span><div className="room-form-amenities">{amenityOptions.map(item=><label key={item}><input type="checkbox" checked={amenities.includes(item)} onChange={()=>toggle(item)}/><span>✓</span>{item}</label>)}</div></section>
       <div className="room-form-actions"><button type="button" className="back" onClick={()=>navigate('/provider/rooms')}><ChevronLeft/> Quay lại</button><button className="save" disabled={busy||!selected}><Plus/>{busy?'Đang thêm...':'Thêm phòng'}</button></div>
     </form>
   </div>

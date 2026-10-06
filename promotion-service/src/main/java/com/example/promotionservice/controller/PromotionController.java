@@ -109,6 +109,23 @@ public class PromotionController {
         service.release(bookingId, token);
     }
 
+
+    @GetMapping("/saved")
+    public List<PromotionResponseDTO> saved(Authentication authentication) {
+        return service.listSavedForCustomer(userId(authentication));
+    }
+
+    @PostMapping("/{id}/save")
+    public PromotionResponseDTO save(@PathVariable Long id, Authentication authentication) {
+        return service.saveForCustomer(id, userId(authentication));
+    }
+
+    @DeleteMapping("/{id}/save")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void removeSaved(@PathVariable Long id, Authentication authentication) {
+        service.removeSavedForCustomer(id, userId(authentication));
+    }
+
     private Long userId(Authentication authentication) {
         if (authentication == null || !(authentication.getDetails() instanceof Number n)) {
             throw new RuntimeException("Không xác định được người dùng.");

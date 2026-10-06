@@ -1,8 +1,8 @@
-import { ArrowLeft, CheckCircle2, Clock3, Copy, Download, Headphones, Home, Hotel as HotelIcon, MapPin, Plane, QrCode, RefreshCcw, ShieldCheck, Ticket, WalletCards } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, Clock3, Download, Headphones, Home, Hotel as HotelIcon, MapPin, Plane, ShieldCheck, Ticket, WalletCards } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { attractionApi, bookingApi, flightApi, hotelApi, paymentApi } from '../../api/services'
-import type { Attraction, Booking, Flight, Hotel, Payment, QrPayment, Room, ServiceType, TicketType } from '../../types'
+import type { Attraction, Booking, Flight, Hotel, Payment, Room, ServiceType, TicketType } from '../../types'
 import { apiError, dateTime, money } from '../../utils/format'
 import { ErrorState, Loading } from '../../components/UI'
 
@@ -23,7 +23,7 @@ function stepLabels(type:ServiceType){return type==='HOTEL'?['Chọn phòng','Th
 
 export default function PaymentsPage() {
   const [sp] = useSearchParams();const bookingId = Number(sp.get('bookingId'))
-  const [payment, setPayment] = useState<Payment | null>(null);const [qr, setQr] = useState<QrPayment | null>(null);const [booking, setBooking] = useState<Booking | null>(null)
+  const [payment, setPayment] = useState<Payment | null>(null);const [booking, setBooking] = useState<Booking | null>(null)
   const [details,setDetails]=useState<ServiceDetails>({flight:null,hotel:null,room:null,attraction:null,ticket:null})
   const [error, setError] = useState('');const [loading, setLoading] = useState(true);const [paypalBusy,setPaypalBusy]=useState(false);const [notice,setNotice]=useState('');const timer = useRef<number | undefined>(undefined)
 
@@ -45,9 +45,9 @@ export default function PaymentsPage() {
         if(paypalToken&&sp.get('paypal')==='return'){
           const p=await paymentApi.capturePaypal(paypalToken);if(!active)return;setPayment(p);setNotice('PayPal đã xác nhận thanh toán thành công.')
         }else{
-          if(sp.get('paypal')==='cancel')setNotice('Bạn đã hủy thanh toán PayPal. Có thể tiếp tục bằng QR hoặc thử PayPal lại.')
-          const p = await paymentApi.create(bookingId, `web-${bookingId}-${crypto.randomUUID()}`, 'QR_BANK_TRANSFER');if (!active) return;setPayment(p)
-          if (p.trangThai === 'PENDING') setQr(await paymentApi.createQr(p.id))
+          if(sp.get('paypal')==='cancel')setNotice('Bạn đã hủy thanh toán PayPal. Có thể thử thanh toán lại.')
+          if(sp.get('cancel')==='true')setNotice('Bạn đã hủy thao tác thanh toán PayOS.')
+          try { const p=await paymentApi.byBookingCode(b.maBooking);if(active)setPayment(p) } catch { /* No payment yet. */ }
         }
         try { setBooking(await bookingApi.detail(bookingId)) } catch { /* Payment amount remains authoritative */ }
       } catch (e) { if (active) setError(apiError(e)) } finally { if (active) setLoading(false) }
@@ -61,39 +61,38 @@ export default function PaymentsPage() {
     return () => window.clearInterval(timer.current)
   }, [payment?.id, payment?.trangThai])
 
-  const startPaypal=async()=>{
+  const startPayment=async(method:'PAYPAL'|'PAYOS')=>{
     if(!bookingId)return
     setPaypalBusy(true);setError('')
     try{
-      if(payment?.trangThai==='PENDING' && payment.phuongThuc==='QR_BANK_TRANSFER'){await paymentApi.cancel(payment.id)}
-      const p=await paymentApi.create(bookingId,`paypal-${bookingId}-${crypto.randomUUID()}`,'PAYPAL')
-      if(!p.paypalApprovalUrl)throw new Error('Chưa thể mở PayPal. Vui lòng thử lại.')
-      window.location.assign(p.paypalApprovalUrl)
+      if(payment?.trangThai==='PENDING'&&payment.phuongThuc!==method) await paymentApi.cancel(payment.id)
+      const p = payment?.trangThai === 'PENDING' && payment.phuongThuc === method ? payment : await paymentApi.create(bookingId,`${method.toLowerCase()}-${bookingId}-${crypto.randomUUID()}`,method)
+      setPayment(p)
+      const url=method==='PAYOS'?p.payosCheckoutUrl:p.paypalApprovalUrl
+      if(!url)throw new Error(`Chưa thể mở ${method}. Vui lòng thử lại.`)
+      window.location.assign(url)
     }catch(e){setError(apiError(e));setPaypalBusy(false)}
   }
 
   if (loading) return <div className="container pad"><Loading label="Đang khởi tạo thanh toán..."/></div>
-  if (error || !payment) return <div className="container pad"><ErrorState message={error || 'Chưa thể khởi tạo thanh toán. Vui lòng kiểm tra đơn hàng và thử lại.'}/><Link to="/bookings">Quay lại đơn hàng</Link></div>
-  const success = payment.trangThai === 'SUCCESS';const type=bookingType(booking)
-  if (payment.trangThai === 'CANCELLED') return <div className="container pad"><ErrorState message="Thanh toán đã hết hạn. Nếu đơn cũng đã hết hạn, vui lòng đặt lại dịch vụ."/><Link to="/bookings">Quay lại đơn của tôi</Link></div>
+  if (error) return <div className="container pad"><ErrorState message={error}/><Link to="/bookings">Quay lại đơn hàng</Link></div>
+  const success = payment?.trangThai === 'SUCCESS';const type=bookingType(booking)
   return <div className={`flight-payment-page travel-payment-v2 payment-${type.toLowerCase()}`}><div className="container flight-payment-wrap">
     <div className="flight-ref-breadcrumb">Trang chủ <span>›</span> {type==='HOTEL'?'Khách sạn':type==='ATTRACTION'?'Địa điểm tham quan':'Chuyến bay'} <span>›</span> {success ? 'Xác nhận' : 'Thanh toán'}</div>
-    {success ? <PaymentSuccess payment={payment} booking={booking} details={details}/> : <PendingPayment payment={payment} qr={qr} booking={booking} details={details} onPaypal={startPaypal} paypalBusy={paypalBusy} notice={notice}/>} 
+    {success && payment ? <PaymentSuccess payment={payment} booking={booking} details={details}/> : <PendingPayment payment={payment} booking={booking} details={details} onPayment={startPayment} paypalBusy={paypalBusy} notice={notice}/>} 
   </div></div>
 }
 
-function PendingPayment({ payment, qr, booking, details, onPaypal, paypalBusy, notice }: { payment: Payment; qr: QrPayment | null; booking: Booking | null; details:ServiceDetails; onPaypal:()=>void; paypalBusy:boolean; notice:string }) {
-  const type=bookingType(booking);const labels=stepLabels(type);const navigate=useNavigate();const [transferBusy,setTransferBusy]=useState(false);const [transferDone,setTransferDone]=useState(booking?.trangThai==='PAYMENT_RECEIVED');const [transferError,setTransferError]=useState('');const confirmTransfer=async()=>{if(!booking)return;setTransferBusy(true);setTransferError('');try{await bookingApi.confirmBankTransfer(booking.id);setTransferDone(true);navigate('/bookings',{replace:true})}catch(e){setTransferError(apiError(e))}finally{setTransferBusy(false)}}
+function PendingPayment({ payment, booking, details, onPayment, paypalBusy, notice }: { payment: Payment | null; booking: Booking | null; details:ServiceDetails; onPayment:(method:'PAYPAL'|'PAYOS')=>void; paypalBusy:boolean; notice:string }) {
+  const type=bookingType(booking);const labels=stepLabels(type)
   return <>
     <div className="booking-title"><h1>Thanh toán</h1><p>Vui lòng hoàn tất thanh toán trước thời hạn để giữ Booking.</p></div>
     <div className="booking-stepper travel-payment-stepper-v2">{labels.map((label,i)=><div className={i<2?'done':i===2?'active':''} key={label}><b>{i<2?'✓':i+1}</b><span>{label}</span>{i<labels.length-1&&<i/>}</div>)}</div>
     <div className="booking-layout payment-layout"><main>
-      <section className="booking-form-card"><h2>Chọn phương thức thanh toán</h2><p className="booking-hint">Chọn phương thức thanh toán phù hợp.</p>{notice&&<div className="form-alert">{notice}</div>}<div className="payment-methods-real"><div className="payment-method-card active"><QrCode/><div><strong>QR / Chuyển khoản ngân hàng</strong><span>QR_BANK_TRANSFER</span></div><CheckCircle2/></div><button type="button" className="payment-method-card paypal" onClick={onPaypal} disabled={paypalBusy}><WalletCards/><div><strong>{paypalBusy?'Đang mở PayPal...':'PayPal'}</strong><span>Thanh toán qua tài khoản PayPal</span></div><b>PayPal</b></button></div></section>
-      <section className="booking-form-card"><h2>Quét mã QR để thanh toán</h2>{qr ? <div className="qr-payment-ref"><div className="qr-code-ref">{qr.qrUrl ? <img src={qr.qrUrl} alt="Mã QR thanh toán"/> : <QrCode/>}</div><div className="bank-details-ref"><p><span>Ngân hàng</span><strong>{qr.nganHang}</strong></p><p><span>Số tài khoản</span><strong>{qr.soTaiKhoan}</strong><button onClick={() => navigator.clipboard.writeText(qr.soTaiKhoan || '')}><Copy/></button></p><p><span>Chủ tài khoản</span><strong>{qr.tenTaiKhoan}</strong></p><p><span>Số tiền</span><strong className="payment-money">{money(qr.soTien)}</strong></p><p><span>Nội dung chuyển khoản</span><strong>{qr.noiDungChuyenKhoan}</strong><button onClick={() => navigator.clipboard.writeText(qr.noiDungChuyenKhoan || '')}><Copy/></button></p></div></div> : <div className="form-alert">Chưa thể tạo mã QR. Vui lòng thử lại.</div>}
-        <div className="payment-waiting"><RefreshCcw className={transferDone?'':'spin'}/><div><strong>{transferDone?'Đã báo chuyển khoản - chờ nhà cung cấp xác nhận':'Sau khi chuyển khoản, hãy xác nhận bên dưới'}</strong><span>{transferDone?'Đơn hàng đã chuyển sang trạng thái chờ xác nhận thanh toán.':'Chỉ bấm xác nhận sau khi bạn đã chuyển khoản đúng số tiền và nội dung.'}</span></div></div>{transferError&&<div className="form-alert">{transferError}</div>}<button type="button" className="confirm-bank-transfer-btn" disabled={transferBusy||transferDone} onClick={confirmTransfer}><CheckCircle2/>{transferDone?'Đã xác nhận chuyển khoản':transferBusy?'Đang xác nhận...':'Xác nhận đã chuyển khoản'}</button>
-      </section>
+      <section className="booking-form-card"><h2>Phương thức thanh toán</h2><p className="booking-hint">Chọn PayOS để thanh toán bằng ngân hàng Việt Nam hoặc PayPal.</p>{notice&&<div className="form-alert">{notice}</div>}<div className="payment-methods-real"><button type="button" className="payment-method-card paypal" onClick={()=>onPayment('PAYOS')} disabled={paypalBusy}><WalletCards/><div><strong>Thanh toán bằng PayOS</strong><span>Chuyển khoản ngân hàng, quét mã QR</span></div><b>PayOS</b></button><button type="button" className="payment-method-card paypal" onClick={()=>onPayment('PAYPAL')} disabled={paypalBusy}><WalletCards/><div><strong>Thanh toán bằng PayPal</strong><span>Thanh toán qua tài khoản PayPal</span></div><b>PayPal</b></button></div></section>
+      <section className="booking-form-card"><h2>Hoàn tất thanh toán</h2><p className="booking-hint">Chọn phương thức ở trên để tiếp tục. Trạng thái đơn được xác nhận sau khi cổng thanh toán gửi kết quả về hệ thống.</p></section>
       <div className="booking-bottom-actions"><Link to="/bookings"><ArrowLeft/>Đơn của tôi</Link><span className="payment-security"><ShieldCheck/> Giao dịch được hệ thống xác nhận</span></div>
-    </main><aside><PaymentOrderSummary payment={payment} booking={booking} details={details}/><section className="booking-support"><Headphones/><div><strong>Cần hỗ trợ?</strong><span>Mã Booking: {payment.maBooking}</span></div></section></aside></div>
+    </main><aside>{payment?<PaymentOrderSummary payment={payment} booking={booking} details={details}/>:<section className="booking-order-card"><h3>Tóm tắt đơn hàng</h3><p>Mã Booking: {booking?.maBooking}</p><div className="summary-line total"><span>Tổng cộng</span><strong>{money(booking?.tongTien||0)}</strong></div></section>}<section className="booking-support"><Headphones/><div><strong>Cần hỗ trợ?</strong><span>Mã Booking: {booking?.maBooking}</span></div></section></aside></div>
   </>
 }
 

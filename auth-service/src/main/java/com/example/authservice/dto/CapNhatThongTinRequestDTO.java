@@ -28,4 +28,16 @@ public class CapNhatThongTinRequestDTO {
 
     @Size(max = 500, message = "Địa chỉ không được vượt quá 500 ký tự")
     private String diaChi;
+
+    private String tenDoanhNghiep;
+    private String tenVietTat;
+    private String moTaDoanhNghiep;
+    private String maSoThue;
+    private String namThanhLap;
+    private String website;
+    private String emailDoanhNghiep;
+    private String soDienThoaiDoanhNghiep;
+    private String diaChiDoanhNghiep;
+    private String anhBia;
+    private String logo;
 }

@@ -19,9 +19,7 @@ import { apiError } from '../../utils/format'
 import {
   ATTRACTION_AMENITIES,
   ATTRACTION_CATEGORIES,
-  attractionMetadataKey,
   loadAttractionExtra,
-  saveAttractionExtra,
   type AttractionExtra,
 } from './ProviderAttractionsPage'
 
@@ -179,21 +177,6 @@ export default function ProviderAttractionFormPage() {
         ? await attractionApi.update(Number(id), payload)
         : await attractionApi.create(payload)
 
-      const now = new Date().toLocaleString('vi-VN')
-      let base: AttractionExtra = {
-        category: saved.loaiDiaDiem || form.loaiDiaDiem,
-        images,
-        amenities: saved.tienIch || form.tienIch,
-        rating: 4.7,
-        reviews: 1256,
-        createdAt: now,
-        updatedAt: now,
-      }
-      if (editing) {
-        const existing = loadAttractionExtra(saved)
-        base = { ...existing, category: saved.loaiDiaDiem, images, amenities: saved.tienIch, updatedAt: now }
-      }
-      saveAttractionExtra(saved.id, base)
       navigate('/provider/attractions')
     } catch (e) {
       setError(apiError(e))
@@ -208,7 +191,6 @@ export default function ProviderAttractionFormPage() {
     setError('')
     try {
       await attractionApi.remove(Number(id))
-      try { localStorage.removeItem(attractionMetadataKey(Number(id))) } catch { /* ignore */ }
       navigate('/provider/attractions')
     } catch (e) {
       setError(apiError(e))

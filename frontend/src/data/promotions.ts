@@ -70,55 +70,6 @@ export interface PromotionRequest {
   serviceIds: number[]
 }
 
-export const SAVED_PROMOTIONS_KEY = 'takivivu.customer.saved-promotions.v1'
-
-export function fromPromotionApi(item: PromotionApiResponse): Promotion {
-  const scope = item.serviceType
-  return {
-    id: item.id,
-    providerId: item.providerId,
-    createdBy: item.createdBy,
-    name: item.name,
-    code: item.code,
-    description: item.description || '',
-    imageUrl: item.imageUrl || null,
-    discountType: item.discountType,
-    discountValue: Number(item.discountValue),
-    minOrderAmount: Number(item.minOrderAmount || 0),
-    maxDiscountAmount: item.maxDiscountAmount == null ? null : Number(item.maxDiscountAmount),
-    startDate: item.startDate,
-    endDate: item.endDate,
-    maxUsage: item.maxUsage,
-    perCustomerLimit: item.maxUsagePerCustomer,
-    scope,
-    serviceIds: item.serviceIds || [],
-    serviceName: item.serviceIds?.length ? `${item.serviceIds.length} dịch vụ được chọn` : `Tất cả ${promotionScopeText(scope).toLowerCase()} của nhà cung cấp`,
-    status: item.status,
-    usedCount: item.usedCount || 0,
-    providerName: item.providerName || (item.providerId == null ? 'TAKIVIVU' : `Nhà cung cấp #${item.providerId}`),
-    createdAt: item.createdAt,
-    updatedAt: item.updatedAt,
-  }
-}
-
-export function loadSavedPromotionIds(): number[] {
-  try {
-    const parsed = JSON.parse(localStorage.getItem(SAVED_PROMOTIONS_KEY) || '[]') as number[]
-    return Array.isArray(parsed) ? parsed : []
-  } catch {
-    return []
-  }
-}
-
-export function savePromotionForCustomer(id: number) {
-  const ids = loadSavedPromotionIds()
-  if (!ids.includes(id)) localStorage.setItem(SAVED_PROMOTIONS_KEY, JSON.stringify([id, ...ids]))
-}
-
-export function removeSavedPromotion(id: number) {
-  localStorage.setItem(SAVED_PROMOTIONS_KEY, JSON.stringify(loadSavedPromotionIds().filter(value => value !== id)))
-}
-
 export function promotionValueText(item: Promotion) {
   return item.discountType === 'PERCENTAGE'
     ? `${item.discountValue}%`
@@ -136,4 +87,36 @@ export function promotionStatusText(status: PromotionStatus) {
   if (status === 'SCHEDULED') return 'Sắp diễn ra'
   if (status === 'INACTIVE') return 'Đã ngừng'
   return 'Đã kết thúc'
+}
+
+export function fromPromotionApi(item: PromotionApiResponse): Promotion {
+  const serviceIds = Array.isArray(item.serviceIds) ? item.serviceIds : []
+  const serviceName = serviceIds.length > 0
+    ? `${promotionScopeText(item.serviceType)} #${serviceIds.join(', #')}`
+    : `Tất cả ${promotionScopeText(item.serviceType).toLowerCase()}`
+  return {
+    id: item.id,
+    providerId: item.providerId ?? null,
+    createdBy: item.createdBy,
+    providerName: item.providerName || 'Nhà cung cấp',
+    name: item.name,
+    code: item.code,
+    description: item.description || '',
+    imageUrl: item.imageUrl ?? null,
+    discountType: item.discountType,
+    discountValue: Number(item.discountValue || 0),
+    minOrderAmount: Number(item.minOrderAmount || 0),
+    maxDiscountAmount: item.maxDiscountAmount ?? null,
+    startDate: item.startDate,
+    endDate: item.endDate,
+    maxUsage: item.maxUsage ?? null,
+    perCustomerLimit: item.maxUsagePerCustomer ?? null,
+    scope: item.serviceType,
+    serviceIds,
+    serviceName,
+    status: item.status,
+    usedCount: Number(item.usedCount || 0),
+    createdAt: item.createdAt,
+    updatedAt: item.updatedAt,
+  }
 }

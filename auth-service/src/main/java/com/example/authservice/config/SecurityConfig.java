@@ -56,6 +56,8 @@ public class SecurityConfig {
                                         "/api/auth/provider-license/upload",
                                         "/api/auth/provider-licenses/**",
                                         "/api/auth/login",
+                                        "/api/auth/forgot-password",
+                                        "/api/auth/reset-password",
                                         "/api/auth/refresh"
                                 )
                                 .permitAll()

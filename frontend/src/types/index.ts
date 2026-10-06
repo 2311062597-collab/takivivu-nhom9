@@ -28,8 +28,19 @@ export interface Profile {
   trangThai: UserStatus
   anhDaiDien: string | null
   diaChi: string | null
+  tenDoanhNghiep?: string | null
+  tenVietTat?: string | null
+  moTaDoanhNghiep?: string | null
+  maSoThue?: string | null
+  namThanhLap?: string | null
+  website?: string | null
+  emailDoanhNghiep?: string | null
+  soDienThoaiDoanhNghiep?: string | null
+  diaChiDoanhNghiep?: string | null
+  anhBia?: string | null
+  logo?: string | null
 }
-export interface UpdateProfileRequest { hoTen: string; soDienThoai: string; anhDaiDien?: string; diaChi?: string }
+export interface UpdateProfileRequest { hoTen: string; soDienThoai: string; anhDaiDien?: string; diaChi?: string; tenDoanhNghiep?: string; tenVietTat?: string; moTaDoanhNghiep?: string; maSoThue?: string; namThanhLap?: string; website?: string; emailDoanhNghiep?: string; soDienThoaiDoanhNghiep?: string; diaChiDoanhNghiep?: string; anhBia?: string; logo?: string }
 
 export type FlightStatus = 'SCHEDULED' | 'CLOSED' | 'CANCELLED' | 'COMPLETED'
 export interface Flight {
@@ -228,7 +239,7 @@ export interface Payment {
   maBooking: string
   khachHangId: number
   soTien: number
-  phuongThuc: 'QR_BANK_TRANSFER' | 'PAYPAL'
+  phuongThuc: 'PAYPAL' | 'PAYOS'
   trangThai: PaymentStatus
   maNganHang: string | null
   soTaiKhoan: string | null
@@ -241,6 +252,8 @@ export interface Payment {
   paypalApprovalUrl: string | null
   paypalCurrency: string | null
   paypalAmount: number | null
+  payosPaymentLinkId: string | null
+  payosCheckoutUrl: string | null
   hetHanLuc: string
   ngayTao: string
   thanhToanLuc: string | null

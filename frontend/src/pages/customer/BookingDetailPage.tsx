@@ -1,10 +1,11 @@
-import { ArrowLeft, Ban, BedDouble, CalendarDays, CheckCircle2, CircleDollarSign, Clock3, Download, Printer, Headphones, Mail, MapPin, Plane, RefreshCcw, ShieldCheck, Ticket, UserRound, UsersRound, X } from 'lucide-react'
+import { ArrowLeft, Ban, BedDouble, CalendarDays, CheckCircle2, CircleDollarSign, Clock3, Download, Printer, Headphones, Mail, MapPin, Plane, RefreshCcw, ShieldCheck, Star, Ticket, UserRound, UsersRound, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { authApi, bookingApi, paymentApi } from '../../api/services'
+import { authApi, bookingApi, paymentApi, reviewApi } from '../../api/services'
 import type { Booking, Payment, Profile } from '../../types'
 import { apiError, dateOnly, dateTime, money } from '../../utils/format'
 import FlightTickets, { type FlightTicketPassenger } from '../../components/FlightTickets'
+import AttractionTickets from '../../components/AttractionTickets'
 import { bookingStatusLabel, bookingStatusTone, resolveBookingItem, serviceTypeLabel, type BookingPresentation } from '../../utils/bookingPresentation'
 
 function text(value: unknown, fallback = '—') { return typeof value === 'string' && value.trim() ? value : fallback }
@@ -24,6 +25,8 @@ export default function BookingDetailPage() {
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState('')
   const [ticketsOpen, setTicketsOpen] = useState(false)
+  const [attractionTicketsOpen, setAttractionTicketsOpen] = useState(false)
+  const [reviewOpen,setReviewOpen]=useState(false),[reviewStars,setReviewStars]=useState(5),[reviewText,setReviewText]=useState(''),[reviewed,setReviewed]=useState(false)
 
   const load = async () => {
     setLoading(true); setError('')
@@ -81,11 +84,15 @@ export default function BookingDetailPage() {
   const canRefund = payment?.trangThai === 'SUCCESS' && ['PAID','CONFIRMED'].includes(booking.trangThai)
     && cancellationStart > Date.now()+24*60*60*1000
   const refundPending = booking.trangThai === 'CANCEL_REQUESTED' || payment?.trangThai === 'REFUND_PENDING'
+  const attractionTicketsAvailable = item.loaiDichVu === 'ATTRACTION' && payment?.trangThai === 'SUCCESS' && ['PAID', 'CONFIRMED', 'COMPLETED'].includes(booking.trangThai) && !!info?.attraction && !!info?.ticket
+  const reviewEnd = item.loaiDichVu === 'FLIGHT' && info?.flight?.thoiGianDen ? new Date(info.flight.thoiGianDen).getTime() : item.loaiDichVu === 'HOTEL' && item.ngayKetThuc ? new Date(`${item.ngayKetThuc}T00:00:00`).getTime() : item.loaiDichVu === 'ATTRACTION' && item.ngayBatDau ? new Date(`${item.ngayBatDau}T23:59:59`).getTime() : Number.POSITIVE_INFINITY
+  const canReview = payment?.trangThai === 'SUCCESS' && Date.now() >= reviewEnd && !reviewed
+  const submitReview=async()=>{if(!booking||!item||!info)return;setBusy(true);setError('');try{if(item.loaiDichVu==='HOTEL'&&info.hotel)await reviewApi.createHotel({bookingId:booking.id,targetId:info.hotel.id,soSao:reviewStars,noiDung:reviewText});else if(item.loaiDichVu==='ATTRACTION'&&info.attraction)await reviewApi.createAttraction({bookingId:booking.id,targetId:info.attraction.id,soSao:reviewStars,noiDung:reviewText});else if(item.loaiDichVu==='FLIGHT'&&info.flight)await reviewApi.createFlight({bookingId:booking.id,targetId:info.flight.id,soSao:reviewStars,noiDung:reviewText});setReviewed(true);setReviewOpen(false);setNotice('Cảm ơn bạn đã đánh giá dịch vụ.')}catch(e){setError(apiError(e))}finally{setBusy(false)}}
   const flightTicketsAvailable = item.loaiDichVu === 'FLIGHT' && payment?.trangThai === 'SUCCESS' && ['PAID', 'CONFIRMED', 'COMPLETED'].includes(booking.trangThai) && !!info?.flight && passengers.length > 0 && selectedSeats.length === passengers.length
 
   return <div className="customer-booking-detail-v3"><div className="container booking-detail-wrap-v3">
     <div className="booking-detail-breadcrumb-v3"><Link to="/bookings"><ArrowLeft/>Đơn đặt dịch vụ</Link><span>›</span><b>Chi tiết đơn</b><span>›</span>{booking.maBooking}</div>
-    <div className="booking-detail-head-v3"><div><h1>Chi tiết đơn đặt dịch vụ</h1><p>Mã đơn: <strong>{booking.maBooking}</strong> <span className={`booking-status-v3 ${bookingStatusTone(booking.trangThai)}`}>{bookingStatusLabel(booking.trangThai)}</span></p></div><div><span>Hạn thanh toán</span><b>{dateTime(booking.hetHanThanhToan)}</b>{payment && <small>Thanh toán: {payment.phuongThuc === 'QR_BANK_TRANSFER' ? 'QR / Chuyển khoản ngân hàng' : payment.phuongThuc}</small>}</div></div>
+    <div className="booking-detail-head-v3"><div><h1>Chi tiết đơn đặt dịch vụ</h1><p>Mã đơn: <strong>{booking.maBooking}</strong> <span className={`booking-status-v3 ${bookingStatusTone(booking.trangThai)}`}>{bookingStatusLabel(booking.trangThai)}</span></p></div><div><span>Hạn thanh toán</span><b>{dateTime(booking.hetHanThanhToan)}</b>{payment && <small>Thanh toán: {payment.phuongThuc}</small>}</div></div>
     {notice && <div className="booking-detail-notice-v3"><CheckCircle2/><span>{notice}</span><button onClick={() => setNotice('')}><X/></button></div>}
     {error && <div className="form-alert">{error}</div>}
 
@@ -109,19 +116,31 @@ export default function BookingDetailPage() {
     </main>
 
     <aside className="booking-payment-summary-v3"><section><h3>Tổng thanh toán</h3><p><span>Tạm tính</span><b>{money(booking.tongTienGoc)}</b></p>{booking.maUuDai && <p><span>Mã ưu đãi</span><b>{booking.maUuDai}</b></p>}{Number(booking.soTienGiam) > 0 && <p className="discount"><span>Giảm giá</span><b>- {money(booking.soTienGiam)}</b></p>}<div className="booking-grand-total-v3"><span>Tổng thanh toán</span><strong>{money(booking.tongTien)}</strong></div></section>
-      <div className={`booking-payment-state-v3 ${payment?.trangThai === 'SUCCESS' ? 'success' : refundPending ? 'pending' : ''}`}><CircleDollarSign/><div><b>{payment ? `Thanh toán: ${payment.trangThai === 'RECONCILIATION_REQUIRED' ? 'Đang đối soát chuyển khoản' : payment.trangThai}` : bookingStatusLabel(booking.trangThai)}</b><span>{payment ? `Mã thanh toán ${payment.maThanhToan}` : 'Chưa có Payment cho Booking này'}</span></div></div>
+      <div className={`booking-payment-state-v3 ${payment?.trangThai === 'SUCCESS' ? 'success' : refundPending ? 'pending' : ''}`}><CircleDollarSign/><div><b>{payment ? `Thanh toán: ${payment.trangThai}` : bookingStatusLabel(booking.trangThai)}</b><span>{payment ? `Mã thanh toán ${payment.maThanhToan}` : 'Chưa có Payment cho Booking này'}</span></div></div>
       {booking.trangThai === 'PENDING_PAYMENT' && <Link className="booking-primary-action-v3" to={`/payments/new?bookingId=${booking.id}`}>Thanh toán ngay</Link>}
       {canCancel && <button className="booking-outline-danger-v3" onClick={() => setCancelOpen(true)}><Ban/>Hủy đơn</button>}
       {canRefund && <button className="booking-outline-danger-v3" onClick={() => setRefundOpen(true)}><RefreshCcw/>Yêu cầu hoàn tiền</button>}
       {booking.lyDoTuChoiHuy && <p role="status">Lý do từ chối gần nhất: {booking.lyDoTuChoiHuy}</p>}
       {refundPending && <div className="booking-refund-pending-v3"><RefreshCcw/><span>Yêu cầu hủy/hoàn tiền đang chờ Provider (tối đa 2 giờ).</span></div>}
       {item.loaiDichVu === 'FLIGHT' && (flightTicketsAvailable ? <button className="booking-primary-action-v3" onClick={() => setTicketsOpen(true)}><Ticket/>Xem vé máy bay</button> : <div className="flight-ticket-locked">{payment?.trangThai !== 'SUCCESS' ? 'Vé chỉ hiển thị sau khi thanh toán được xác nhận.' : ['CANCELLED', 'EXPIRED', 'REFUNDED'].includes(booking.trangThai) ? 'Đơn đã hủy hoặc hoàn tiền, không thể xem vé.' : 'Chưa đủ thông tin hành khách/ghế để xuất vé.'}</div>)}
+      {canReview && <button className="booking-primary-action-v3" onClick={()=>setReviewOpen(true)}><Star/>Đánh giá</button>}
+      {item.loaiDichVu === 'ATTRACTION' && (attractionTicketsAvailable ? <button className="booking-primary-action-v3" onClick={() => setAttractionTicketsOpen(true)}><Ticket/>Xem vé tham quan</button> : <div className="flight-ticket-locked">{payment?.trangThai !== 'SUCCESS' ? 'Vé chỉ hiển thị sau khi thanh toán được xác nhận.' : ['CANCELLED', 'EXPIRED', 'REFUNDED'].includes(booking.trangThai) ? 'Đơn đã hủy hoặc hoàn tiền, không thể xem vé.' : 'Chưa đủ thông tin để xuất vé tham quan.'}</div>)}
       <button className="booking-outline-action-v3" onClick={() => window.print()}><Download/>In / lưu hóa đơn</button>
       <Link className="booking-outline-action-v3" to="/ai"><Headphones/>Liên hệ hỗ trợ</Link>
       <div className="booking-help-v3"><ShieldCheck/><div><b>Thông tin được xác nhận bởi hệ thống</b><span>Giá, trạng thái và ưu đãi được kiểm tra trước khi hiển thị.</span></div></div>
     </aside></div>
   </div>
 
+  {attractionTicketsOpen && attractionTicketsAvailable && info?.attraction && info?.ticket && <AttractionTickets
+    bookingCode={booking.maBooking}
+    bookingId={booking.id}
+    attraction={info.attraction}
+    ticket={info.ticket}
+    visitDate={item.ngayBatDau}
+    quantity={item.soLuong}
+    customerName={text(contact.hoTen, profile?.hoTen || '—')}
+    onClose={() => setAttractionTicketsOpen(false)}
+  />}
   {ticketsOpen && flightTicketsAvailable && info?.flight && <FlightTickets
     bookingCode={booking.maBooking}
     bookingId={booking.id}
@@ -132,6 +151,7 @@ export default function BookingDetailPage() {
   />}
   {cancelOpen && <div className="booking-modal-backdrop-v3" onMouseDown={() => setCancelOpen(false)}><div className="booking-action-modal-v3" onMouseDown={e => e.stopPropagation()}><button className="booking-modal-x-v3" onClick={() => setCancelOpen(false)}>×</button><span className="booking-modal-icon-v3 danger"><Ban/></span><h2>Hủy đơn đặt dịch vụ</h2><p>Bạn có chắc muốn hủy đơn <strong>{booking.maBooking}</strong>?</p><div className="booking-modal-info-v3"><b>Lưu ý</b><span>Chỉ đơn chưa thanh toán được hủy trực tiếp. Đơn đã thanh toán cần gửi yêu cầu hoàn tiền.</span></div><div className="booking-modal-actions-v3"><button onClick={() => setCancelOpen(false)}>Quay lại</button><button className="danger" disabled={busy} onClick={() => void cancelBooking()}>{busy ? 'Đang xử lý...' : 'Xác nhận hủy'}</button></div></div></div>}
 
+  {reviewOpen&&<div className="booking-modal-backdrop-v3" onMouseDown={()=>setReviewOpen(false)}><div className="booking-action-modal-v3" onMouseDown={e=>e.stopPropagation()}><button className="booking-modal-x-v3" onClick={()=>setReviewOpen(false)}>×</button><span className="booking-modal-icon-v3"><Star/></span><h2>Đánh giá dịch vụ</h2><div className="booking-review-stars">{[1,2,3,4,5].map(n=><button type="button" key={n} className={n<=reviewStars?'active':''} onClick={()=>setReviewStars(n)}>★</button>)}</div><label className="booking-refund-reason-v3">Nhận xét<textarea maxLength={2000} value={reviewText} onChange={e=>setReviewText(e.target.value)} placeholder="Chia sẻ trải nghiệm của bạn..."/></label><div className="booking-modal-actions-v3"><button onClick={()=>setReviewOpen(false)}>Để sau</button><button disabled={busy} onClick={()=>void submitReview()}>{busy?'Đang gửi...':'Gửi đánh giá'}</button></div></div></div>}
   {refundOpen && <div className="booking-modal-backdrop-v3" onMouseDown={() => setRefundOpen(false)}><div className="booking-action-modal-v3" onMouseDown={e => e.stopPropagation()}><button className="booking-modal-x-v3" onClick={() => setRefundOpen(false)}>×</button><span className="booking-modal-icon-v3"><RefreshCcw/></span><h2>Yêu cầu hoàn tiền</h2><p>Hệ thống sẽ tạo yêu cầu hoàn tiền cho giao dịch <strong>{payment?.maThanhToan}</strong>.</p><div className="booking-refund-amount-v3"><span>Số tiền yêu cầu hoàn</span><strong>{money(Number(booking.tongTienGoc || 0) > 0 ? Math.min(Number(booking.tongTien), Math.round((Number(item.thanhTien || 0) / Number(booking.tongTienGoc)) * Number(booking.tongTien))) : Number(booking.tongTien))}</strong></div><label className="booking-refund-reason-v3">Lý do<select value={reason} onChange={e => setReason(e.target.value)}><option>Thay đổi kế hoạch cá nhân</option><option>Không thể sử dụng dịch vụ</option><option>Đặt nhầm dịch vụ</option><option>Lý do khác</option></select></label><div className="booking-modal-info-v3"><b>Lưu ý</b><span>Yêu cầu sẽ được kiểm tra trước khi khoản tiền hoàn được xác nhận.</span></div><div className="booking-modal-actions-v3"><button onClick={() => setRefundOpen(false)}>Quay lại</button><button className="danger" disabled={busy} onClick={() => void requestRefund()}>{busy ? 'Đang gửi...' : 'Gửi yêu cầu hoàn tiền'}</button></div></div></div>}
   </div>
 }

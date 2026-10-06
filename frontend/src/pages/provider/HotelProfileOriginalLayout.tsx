@@ -11,7 +11,6 @@ const empty: HotelRequest = {
   tenKhachSan: '', moTa: '', diaChi: '', thanhPho: '', quanHuyen: '', soDienThoai: '',
   email: '', soSao: 1, soTang: 0, tienNghi: '', hinhAnh: '', anhGioiThieu: '', anhThuVien: '', viDo: 0, kinhDo: 0,
 }
-const AMENITIES = ['Wi-Fi', 'Hồ bơi', 'Bãi đỗ xe', 'Nhà hàng', 'Bữa sáng', 'Thang máy', 'Điều hòa', 'Phòng gym', 'Spa', 'Lễ tân 24/7', 'Đưa đón sân bay', 'Phòng họp']
 const validImage = (file: File) => ['image/jpeg', 'image/png', 'image/webp'].includes(file.type) && file.size <= 5 * 1024 * 1024
 
 export default function HotelProfileOriginalLayout() {
@@ -204,7 +203,7 @@ export default function HotelProfileOriginalLayout() {
             <label>Số điện thoại <b>*</b><input required value={form.soDienThoai || ''} onChange={e => change('soDienThoai', e.target.value)}/></label>
             <label>Email <b>*</b><div className="provider-profile-input-icon"><Mail/><input required type="email" value={form.email || ''} onChange={e => change('email', e.target.value)}/></div></label>
             <label>Số tầng <b>*</b><input required type="number" min="1" step="1" value={form.soTang || ''} onChange={e => change('soTang', Number(e.target.value))}/></label>
-            <fieldset className="span-2 hotel-amenity-field"><legend>Tiện nghi <b>*</b></legend><div className="hotel-amenity-options">{AMENITIES.map(name => <label key={name}><input type="checkbox" checked={selectedAmenities.includes(name)} onChange={() => toggleAmenity(name)} />{name}</label>)}</div></fieldset>
+            <label className="span-2">Tiện nghi <b>*</b><textarea required value={form.tienNghi || ''} onChange={e => change('tienNghi', e.target.value)} placeholder="Ví dụ: Wi-Fi, Hồ bơi, Bãi đỗ xe, Điều hòa (phân cách bằng dấu phẩy)"/><small>Nhập các tiện nghi cách nhau bằng dấu phẩy. Danh sách này sẽ là nguồn checkbox khi tạo loại phòng.</small></label>
           </div>
           <section className="hotel-gallery"><h3>Hình ảnh khách sạn</h3><p>Thêm các ảnh về khách sạn. Ảnh đại diện và ảnh bìa được thay đổi riêng ở phía trên. Tối đa 12 ảnh, mỗi ảnh không quá 5 MB.</p><div className="hotel-gallery-grid">{gallery.map((url, index) => <div className="hotel-gallery-tile" key={`${url}-${index}`}><img src={url} alt={`Ảnh khách sạn ${index + 1}`}/><button type="button" className="hotel-gallery-remove" aria-label={`Xóa ảnh ${index + 1}`} title="Xóa ảnh" onClick={() => removeGallery(index)}>×</button></div>)}{gallery.length < 12 && <label className="hotel-gallery-tile hotel-gallery-add"><Camera/><span>{galleryBusy ? 'Đang tải ảnh...' : '+ Thêm hình ảnh'}</span><input type="file" accept="image/jpeg,image/png,image/webp" multiple disabled={galleryBusy || busy} onChange={e => void uploadGallery(e)}/></label>}</div></section>
           <div className="provider-profile-actions"><button type="button" className="secondary" onClick={() => {setForm(initial);setError('');setMessage('')}}><RefreshCcw/> Hủy thay đổi</button><button type="submit" className="primary" disabled={busy || loading}><Save/> {busy ? 'Đang lưu...' : 'Lưu thông tin'}</button></div>

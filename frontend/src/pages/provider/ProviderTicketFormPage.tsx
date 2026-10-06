@@ -13,7 +13,7 @@ import type { Attraction, AttractionTicketCategory, TicketRequest, TicketType } 
 import { Loading } from '../../components/UI'
 import { apiError, money } from '../../utils/format'
 import { loadAttractionExtra } from './ProviderAttractionsPage'
-import { loadTicketExtra, saveTicketExtra, type TicketExtra } from './ProviderTicketsPage'
+import { loadTicketExtra, type TicketExtra } from './ProviderTicketsPage'
 
 const blank: TicketRequest = { maLoaiVe: '', moTa: '', giaVe: 0, tongSoVe: 1, ngayBatDau: '', ngayKetThuc: '' }
 const today = () => { const d = new Date(); const offset = d.getTimezoneOffset(); return new Date(d.getTime() - offset * 60000).toISOString().slice(0, 10) }
@@ -151,7 +151,6 @@ export default function ProviderTicketFormPage() {
       const saved = editing && ticket
         ? await attractionApi.updateTicket(Number(attractionId), ticket.id, payload)
         : await attractionApi.createTicket(Number(attractionId), payload)
-      saveTicketExtra(saved.id, { ...extra, kind: saved.tenLoaiVe, audience: saved.doiTuongApDung })
       navigate('/provider/tickets')
     } catch (e) {
       setError(apiError(e))

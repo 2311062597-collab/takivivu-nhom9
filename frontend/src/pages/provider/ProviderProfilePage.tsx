@@ -47,38 +47,24 @@ interface ProviderProfileExtra {
   logoImage: string
 }
 
-const storageKey = (id?: number) => `takivivu:provider-profile:${id || 'local'}`
-
-function defaults(profile: Profile | null, type: ProviderType | null | undefined, sessionEmail?: string): ProviderProfileExtra {
-  const name = profile?.hoTen || 'Nguyễn Văn An'
-  const fallbackBusiness = type === 'FLIGHT' ? 'Công ty TNHH TAKIVIVU Aviation' : type === 'ATTRACTION' ? 'Công ty TNHH An Travel' : 'Công ty TNHH An Travel'
+function defaults(profile: Profile | null, providerType?: ProviderType | null, email?: string | null): ProviderProfileExtra {
+  const service = providerType ? [providerType] : []
   return {
-    businessName: fallbackBusiness,
-    shortName: fallbackBusiness.replace(/^Công ty TNHH\s*/i, '').trim() || name,
-    description: 'Đơn vị cung cấp các dịch vụ du lịch chất lượng cao, cam kết mang đến trải nghiệm tốt nhất cho khách hàng.',
-    services: type === 'ATTRACTION' ? ['ATTRACTION', 'TICKET'] : type ? [type] : ['HOTEL', 'ATTRACTION'],
-    taxCode: '0101234567',
-    foundedYear: '2019',
-    website: 'https://antravel.vn',
-    businessAddress: profile?.diaChi || 'Số 123 Trần Duy Hưng, Cầu Giấy, Hà Nội',
-    businessPhone: profile?.soDienThoai || '024 1234 5678',
-    businessEmail: profile?.email || sessionEmail || 'contact@antravel.vn',
-    joinedAt: '15/03/2024',
-    approvedAt: 'Đã xác thực',
-    licenseStatus: 'Đã duyệt',
-    coverImage: '',
-    logoImage: profile?.anhDaiDien || '',
-  }
-}
-
-function loadExtra(id: number | undefined, base: ProviderProfileExtra) {
-  try {
-    const raw = localStorage.getItem(storageKey(id))
-    if (!raw) return base
-    const parsed = JSON.parse(raw) as Partial<ProviderProfileExtra>
-    return { ...base, ...parsed, services: parsed.services?.length ? parsed.services : base.services }
-  } catch {
-    return base
+    businessName: profile?.tenDoanhNghiep || profile?.hoTen || '',
+    shortName: profile?.tenVietTat || '',
+    description: profile?.moTaDoanhNghiep || '',
+    services: service,
+    taxCode: profile?.maSoThue || '',
+    foundedYear: profile?.namThanhLap || '',
+    website: profile?.website || '',
+    businessAddress: profile?.diaChiDoanhNghiep || profile?.diaChi || '',
+    businessPhone: profile?.soDienThoaiDoanhNghiep || profile?.soDienThoai || '',
+    businessEmail: profile?.emailDoanhNghiep || profile?.email || email || '',
+    joinedAt: '',
+    approvedAt: '',
+    licenseStatus: 'Đã xác minh',
+    coverImage: profile?.anhBia || '',
+    logoImage: profile?.logo || profile?.anhDaiDien || '',
   }
 }
 
@@ -108,7 +94,7 @@ function GeneralProviderProfilePage() {
   const { session } = useAuth()
   const navigate = useNavigate()
   const [profile, setProfile] = useState<Profile | null>(null)
-  const [extra, setExtra] = useState<ProviderProfileExtra>(() => loadExtra(session?.id, defaults(null, session?.loaiNhaCungCap, session?.email)))
+  const [extra, setExtra] = useState<ProviderProfileExtra>(() => defaults(null, session?.loaiNhaCungCap, session?.email))
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
   const [busy, setBusy] = useState(false)
@@ -118,7 +104,8 @@ function GeneralProviderProfilePage() {
     authApi.profile().then(data => {
       if (!active) return
       setProfile(data)
-      setExtra(loadExtra(session?.id || data.id, defaults(data, session?.loaiNhaCungCap, session?.email)))
+      const base = defaults(data, session?.loaiNhaCungCap, session?.email)
+      setExtra({ ...base, businessName: data.tenDoanhNghiep || base.businessName, shortName: data.tenVietTat || base.shortName, description: data.moTaDoanhNghiep || base.description, taxCode: data.maSoThue || '', foundedYear: data.namThanhLap || '', website: data.website || '', businessAddress: data.diaChiDoanhNghiep || data.diaChi || '', businessPhone: data.soDienThoaiDoanhNghiep || data.soDienThoai || '', businessEmail: data.emailDoanhNghiep || data.email || '', coverImage: data.anhBia || '', logoImage: data.logo || data.anhDaiDien || '' })
     }).catch(err => {
       if (!active) return
       setError(apiError(err))
@@ -160,8 +147,7 @@ function GeneralProviderProfilePage() {
   }
 
   const reset = () => {
-    const base = loadExtra(session?.id || visibleProfile.id, defaults(profile, session?.loaiNhaCungCap, session?.email))
-    setExtra(base)
+    setExtra(defaults(profile, session?.loaiNhaCungCap, session?.email))
     setMessage('')
   }
 
@@ -176,17 +162,14 @@ function GeneralProviderProfilePage() {
         soDienThoai: extra.businessPhone || visibleProfile.soDienThoai,
         anhDaiDien: extra.logoImage || visibleProfile.anhDaiDien || undefined,
         diaChi: extra.businessAddress || visibleProfile.diaChi || undefined,
+        tenDoanhNghiep: extra.businessName, tenVietTat: extra.shortName, moTaDoanhNghiep: extra.description,
+        maSoThue: extra.taxCode, namThanhLap: extra.foundedYear, website: extra.website,
+        emailDoanhNghiep: extra.businessEmail, soDienThoaiDoanhNghiep: extra.businessPhone,
+        diaChiDoanhNghiep: extra.businessAddress, anhBia: extra.coverImage, logo: extra.logoImage,
       }
-      try {
-        const updated = await authApi.updateProfile(payload)
-        setProfile(updated)
-      } catch (apiErr) {
-        // Extended provider fields do not exist in the current backend. Keep the UI usable
-        // by saving them locally while still surfacing the API problem as a non-blocking note.
-        setError(`Thông tin mở rộng đã lưu trên trình duyệt. API hồ sơ chưa cập nhật được: ${apiError(apiErr)}`)
-      }
-      localStorage.setItem(storageKey(session?.id || visibleProfile.id), JSON.stringify(extra))
-      setMessage('Đã lưu thông tin nhà cung cấp.')
+      const updated = await authApi.updateProfile(payload)
+      setProfile(updated)
+      setMessage('Đã lưu thông tin nhà cung cấp vào hệ thống.')
     } finally {
       setBusy(false)
     }

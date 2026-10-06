@@ -89,6 +89,7 @@ export default function LoginPage() {
 
             <div className="travel-card-row">
               <label className="travel-check"><input type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)} /><span>Ghi nhớ đăng nhập</span></label>
+              <Link to="/forgot-password">Quên mật khẩu?</Link>
             </div>
 
             <button className="travel-primary login-submit" disabled={busy}>{busy ? 'Đang đăng nhập...' : <>ĐĂNG NHẬP <span>→</span></>}</button>

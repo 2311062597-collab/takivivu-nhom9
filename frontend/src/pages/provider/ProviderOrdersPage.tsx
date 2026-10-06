@@ -25,7 +25,7 @@ export default function ProviderOrdersPage() {
   useEffect(()=>setPage(1),[status,date,query])
   const pages=Math.max(1,Math.ceil(shown.length/perPage)), current=Math.min(page,pages), list=shown.slice((current-1)*perPage,current*perPage)
   return <div className="provider-orders-v2"><div className="provider-v2-breadcrumbs"><Link to="/provider">Trang chủ</Link><span>›</span><strong>Đơn đặt dịch vụ</strong></div>
-    <section className="order-list-heading"><div><h1>Đơn đặt dịch vụ</h1><p>Chỉ hiển thị đơn thuộc dịch vụ của nhà cung cấp hiện tại. Đơn chỉ xuất hiện sau khi khách xác nhận đã chuyển khoản; Provider kiểm tra và xác nhận thanh toán.</p></div></section>
+    <section className="order-list-heading"><div><h1>Đơn đặt dịch vụ</h1><p>Chỉ hiển thị đơn thuộc dịch vụ của nhà cung cấp hiện tại. Thanh toán PayPal được hệ thống ghi nhận tự động.</p></div></section>
     <section className="order-list-card"><div className="order-filter-row">
       <label><span>Trạng thái</span><select value={status} onChange={e=>setStatus(e.target.value)}><option value="">Tất cả</option><option value="PAYMENT_RECEIVED">Chờ xác nhận thanh toán</option><option value="PAID">Đã thanh toán</option><option value="CONFIRMED">Đã xác nhận</option><option value="COMPLETED">Hoàn thành</option><option value="CANCELLED">Đã hủy</option><option value="CANCEL_REQUESTED">Yêu cầu hủy/hoàn tiền</option><option value="REFUND_PENDING">Đang hoàn tiền</option><option value="REFUNDED">Đã hoàn tiền</option></select></label>
       <label><span>Ngày sử dụng</span><div className="order-date-field"><CalendarDays/><input type="date" value={date} onChange={e=>setDate(e.target.value)}/></div></label>

@@ -41,26 +41,6 @@ const blank: HotelRequest = {
 const cities = ['Hà Nội','TP. Hồ Chí Minh','Đà Nẵng','Nha Trang','Phú Quốc','Quy Nhơn','Hạ Long','Hội An','Vũng Tàu','Đà Lạt']
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024
 
-interface ExtraFields {
-  brand: string
-  district: string
-}
-
-const extraBlank: ExtraFields = { brand:'', district:'' }
-
-function metadataKey(id:number){ return `takivivu.hotel.extra.${id}` }
-
-function loadMetadata(id:number):ExtraFields {
-  try {
-    const raw = localStorage.getItem(metadataKey(id))
-    return raw ? { ...extraBlank, ...JSON.parse(raw) } : extraBlank
-  } catch { return extraBlank }
-}
-
-function saveMetadata(id:number, extra:ExtraFields){
-  try { localStorage.setItem(metadataKey(id), JSON.stringify(extra)) } catch { /* localStorage may be unavailable */ }
-}
-
 function normalizedText(value?: string) {
   return (value || '').trim().replace(/\s+/g, ' ')
 }
@@ -72,7 +52,6 @@ export default function ProviderHotelFormPage({ profileMode = false }: { profile
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const [form,setForm] = useState<HotelRequest>(blank)
-  const [extra,setExtra] = useState<ExtraFields>(extraBlank)
   const [files,setFiles] = useState<File[]>([])
   const [loading,setLoading] = useState(editing)
   const [busy,setBusy] = useState(false)
@@ -94,7 +73,6 @@ export default function ProviderHotelFormPage({ profileMode = false }: { profile
     setLoading(true)
     hotelApi.detail(Number(id)).then(h=>{
       setForm({tenKhachSan:h.tenKhachSan,moTa:h.moTa||'',diaChi:h.diaChi,thanhPho:h.thanhPho,soDienThoai:h.soDienThoai||'',email:h.email||'',hinhAnh:h.hinhAnh||'',viDo:h.viDo||0,kinhDo:h.kinhDo||0,soSao:h.soSao||1,soTang:h.soTang||0,quanHuyen:h.quanHuyen||'',tienNghi:h.tienNghi||'',anhGioiThieu:h.anhGioiThieu||''})
-      setExtra(loadMetadata(Number(id)))
     }).catch(e=>setError(apiError(e))).finally(()=>setLoading(false))
   },[id])
 
@@ -172,10 +150,8 @@ export default function ProviderHotelFormPage({ profileMode = false }: { profile
 
       if(editing && (hotelId || id)){
         await hotelApi.update(Number(hotelId || id),payload)
-        saveMetadata(Number(hotelId || id),extra)
       } else {
         const created = await hotelApi.create(payload)
-        saveMetadata(created.id,extra)
       }
       navigate(profileMode ? '/provider/profile?saved=1' : '/provider/hotels')
     } catch(e){

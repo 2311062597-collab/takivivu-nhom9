@@ -1,7 +1,7 @@
 import { CalendarDays, ChevronLeft, Clock3, Plane, Save } from 'lucide-react'
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { flightApi } from '../../api/services'
+import { authApi, flightApi } from '../../api/services'
 import { useAuth } from '../../contexts/AuthContext'
 import type { FlightRequest } from '../../types'
 import { apiError } from '../../utils/format'
@@ -56,18 +56,6 @@ function generateFlightCode() {
   return `TKV${stamp}${random}`
 }
 
-function providerBusinessName(providerId?: number, fallback?: string) {
-  try {
-    const raw = localStorage.getItem(`takivivu:provider-profile:${providerId || 'local'}`)
-    if (raw) {
-      const parsed = JSON.parse(raw) as { businessName?: string; shortName?: string }
-      if (parsed.businessName?.trim()) return parsed.businessName.trim()
-      if (parsed.shortName?.trim()) return parsed.shortName.trim()
-    }
-  } catch {}
-  return fallback?.trim() || ''
-}
-
 export default function ProviderFlightFormPage() {
   const { id } = useParams()
   const editing = Boolean(id)
@@ -81,8 +69,7 @@ export default function ProviderFlightFormPage() {
 
   useEffect(() => {
     if (editing) return
-    const airline = providerBusinessName(session?.id, session?.hoTen)
-    setForm(previous => ({ ...previous, hangHangKhong: airline, maChuyenBay: previous.maChuyenBay || generateFlightCode() }))
+    authApi.profile().then(profile => { const airline = profile.tenDoanhNghiep?.trim() || session?.hoTen || ''; setForm(previous => ({ ...previous, hangHangKhong: airline, maChuyenBay: previous.maChuyenBay || generateFlightCode() })) }).catch(() => setForm(previous => ({ ...previous, hangHangKhong: session?.hoTen || '', maChuyenBay: previous.maChuyenBay || generateFlightCode() })))
   }, [editing, session?.hoTen, session?.id])
 
   useEffect(() => {
@@ -155,7 +142,7 @@ export default function ProviderFlightFormPage() {
       const cheapest = fares.filter(f => Number(f.giaVe) > 0).sort((a,b) => Number(a.giaVe) - Number(b.giaVe))[0]
       const payload: FlightRequest = {
         ...form,
-        hangHangKhong: providerBusinessName(session?.id, session?.hoTen) || form.hangHangKhong,
+        hangHangKhong: form.hangHangKhong,
         maChuyenBay: form.maChuyenBay || generateFlightCode(),
         // Hai trường legacy này vẫn được backend validate trước khi xử lý hangVes.
         // Đồng bộ với hạng vé hợp lệ để không báo sai "Giá vé phải lớn hơn 0".

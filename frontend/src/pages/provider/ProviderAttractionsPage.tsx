@@ -36,6 +36,16 @@ export const ATTRACTION_AMENITIES = [
   'Gần phương tiện công cộng',
 ]
 
+function categoryFromName(name: string) {
+  const value = (name || '').toLowerCase()
+  if (value.includes('bảo tàng') || value.includes('di tích') || value.includes('lịch sử')) return 'Văn hóa - Lịch sử'
+  if (value.includes('khu du lịch')) return 'Khu du lịch'
+  if (value.includes('chợ') || value.includes('mall') || value.includes('mua sắm')) return 'Mua sắm'
+  if (value.includes('công viên') || value.includes('vui chơi')) return 'Vui chơi - Giải trí'
+  if (value.includes('nhà thờ') || value.includes('chùa') || value.includes('kiến trúc')) return 'Kiến trúc'
+  return 'Danh lam thắng cảnh'
+}
+
 export interface AttractionExtra {
   category: string
   images: string[]
@@ -46,55 +56,15 @@ export interface AttractionExtra {
   updatedAt: string
 }
 
-export function attractionMetadataKey(id: number) {
-  return `takivivu.attraction.extra.${id}`
-}
-
-function categoryFromName(name = '') {
-  const value = name.toLowerCase()
-  if (value.includes('bà nà') || value.includes('ba na')) return 'Khu du lịch'
-  if (value.includes('hội an') || value.includes('pho co') || value.includes('phố cổ')) return 'Văn hóa - Lịch sử'
-  if (value.includes('đức bà') || value.includes('duc ba')) return 'Kiến trúc'
-  if (value.includes('chợ') || value.includes('cho ')) return 'Mua sắm'
-  return 'Danh lam thắng cảnh'
-}
-
 export function loadAttractionExtra(attraction: Attraction): AttractionExtra {
-  const defaults: AttractionExtra = {
+  return {
     category: attraction.loaiDiaDiem || categoryFromName(attraction.tenDiaDiem),
     images: attraction.hinhAnh ? [attraction.hinhAnh] : [],
     amenities: attraction.tienIch?.length ? attraction.tienIch : [],
-    rating: Math.min(4.9, 4.4 + ((attraction.id % 5) * 0.1)),
-    reviews: 620 + attraction.id * 53,
-    createdAt: '12/08/2026 10:15',
-    updatedAt: '05/09/2026 14:30',
-  }
-  try {
-    const raw = localStorage.getItem(attractionMetadataKey(attraction.id))
-    if (!raw) return defaults
-    const parsed = JSON.parse(raw) as Partial<AttractionExtra>
-    return {
-      ...defaults,
-      ...parsed,
-      category: defaults.category,
-      amenities: defaults.amenities,
-      images: parsed.images?.length ? parsed.images : defaults.images,
-    }
-  } catch {
-    return defaults
-  }
-}
-
-export function saveAttractionExtra(id: number, extra: AttractionExtra) {
-  try {
-    // Chỉ lưu URL/ảnh nhỏ ở frontend; backend không bị thay đổi.
-    const compact = {
-      ...extra,
-      images: extra.images.filter(src => !src.startsWith('data:') || src.length < 350_000).slice(0, 5),
-    }
-    localStorage.setItem(attractionMetadataKey(id), JSON.stringify(compact))
-  } catch {
-    // localStorage có thể đầy khi người dùng chọn ảnh lớn; bỏ qua để không ảnh hưởng API.
+    rating: 0,
+    reviews: 0,
+    createdAt: '—',
+    updatedAt: '—',
   }
 }
 
@@ -163,7 +133,6 @@ export default function ProviderAttractionsPage() {
     setError('')
     try {
       await attractionApi.remove(remove.id)
-      try { localStorage.removeItem(attractionMetadataKey(remove.id)) } catch { /* ignore */ }
       setRemove(null)
       load()
     } catch (e) {

@@ -15,7 +15,7 @@ import type { Attraction, TicketType } from '../../types'
 import { Loading } from '../../components/UI'
 import { apiError, dateOnly, money } from '../../utils/format'
 import { loadAttractionExtra } from './ProviderAttractionsPage'
-import { loadTicketExtra, ticketMetadataKey } from './ProviderTicketsPage'
+import { loadTicketExtra } from './ProviderTicketsPage'
 import { googleMapEmbed, googleMapExternal } from '../../utils/googleMaps'
 
 export default function ProviderTicketDetailPage() {
@@ -58,7 +58,6 @@ export default function ProviderTicketDetailPage() {
     setError('')
     try {
       await attractionApi.removeTicket(place.id, ticket.id)
-      try { localStorage.removeItem(ticketMetadataKey(ticket.id)) } catch { /* ignore */ }
       navigate('/provider/tickets')
     } catch (e) {
       setError(apiError(e))

@@ -1,0 +1,27 @@
+TAKIVIVU - BẢN VÁ XÁC NHẬN CHUYỂN KHOẢN 3 PHÚT
+Nguồn: takivivu(20260928-105207).zip
+
+Thay thế các file theo đường dẫn tương ứng trong ZIP.
+Dừng Booking Service, Payment Service và frontend trước khi cập nhật.
+
+Luồng:
+- Khi khách báo đã chuyển khoản, Booking chuyển PAYMENT_RECEIVED và bắt đầu đếm 3 phút.
+- Provider thấy đồng hồ đếm ngược; xác nhận trước hạn đồng bộ Payment SUCCESS rồi Booking CONFIRMED.
+- Quá 3 phút: hệ thống đánh dấu Payment RECONCILIATION_REQUIRED (nếu vẫn PENDING), giải phóng chỗ và chuyển Booking EXPIRED; gửi thông báo đối soát cho khách và provider.
+- Không thông báo đã hoàn tiền khi chưa thực sự nhận tiền và chưa hoàn tiền.
+- Nếu tiền đã vào sau khi hết hạn, ADMIN dùng PUT /api/payments/{id}/reconcile-late-transfer để đánh dấu đã nhận tiền; tiếp theo dùng API hoàn tiền hiện có POST /api/payments/{id}/refund, rồi xác nhận kết quả thực tế qua PUT /api/payments/refunds/{refundId}/confirm?transactionCode=...
+- Không tái xuất vé hay giữ chỗ lại cho đơn hết hạn.
+- Scheduler Payment kiểm tra trạng thái Booking trước khi hủy giao dịch PENDING, tránh trường hợp Booking đã xác nhận nhưng Payment bị tự hủy.
+
+CẦN KIỂM THỬ TRƯỚC KHI DÙNG:
+1. Khách báo chuyển khoản; Provider xác nhận trong 3 phút: Payment SUCCESS, Booking CONFIRMED, không tự hủy.
+2. Khách báo chuyển khoản; Provider không xác nhận: quá 3 phút, Booking EXPIRED, Payment RECONCILIATION_REQUIRED, chỗ được giải phóng.
+3. Thanh toán PayPal thành công: không bị scheduler hủy.
+4. Nếu xác nhận thực tế chuyển khoản đến muộn, admin đối soát và tạo yêu cầu hoàn tiền; chỉ ghi REFUNDED sau khi xác nhận hoàn tiền thực tế.
+5. Thử với FLIGHT, HOTEL, ATTRACTION và trường hợp một service tạm ngắt kết nối.
+
+LƯU Ý:
+- Đây là bản vá mã nguồn, chưa chạy kiểm thử tích hợp MySQL/đa service. Không tự động chuyển khoản hoàn tiền; cần xác minh giao dịch ngân hàng và thao tác hoàn tiền thực tế.
+- Dữ liệu Booking/Payment đã lệch trạng thái trước khi cập nhật cần đối soát thủ công; bản vá không tự sửa dữ liệu lịch sử.
+- Không cần ALTER TABLE nếu trang_thai của thanh_toan là VARCHAR và đủ độ dài; kiểm tra schema trước khi áp dụng. Giá trị mới RECONCILIATION_REQUIRED dài 23 ký tự.
+- API nội bộ dùng X-Internal-Token; hãy chuyển token/mật khẩu khỏi source trước khi triển khai thực tế.

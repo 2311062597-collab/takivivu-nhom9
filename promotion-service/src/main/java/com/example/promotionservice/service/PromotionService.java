@@ -5,6 +5,7 @@ import com.example.promotionservice.entity.*;
 import com.example.promotionservice.exception.ApiException;
 import com.example.promotionservice.repository.PromotionRepository;
 import com.example.promotionservice.repository.PromotionUsageRepository;
+import com.example.promotionservice.repository.SavedPromotionRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
@@ -21,6 +22,7 @@ import java.util.*;
 public class PromotionService {
     private final PromotionRepository promotionRepository;
     private final PromotionUsageRepository usageRepository;
+    private final SavedPromotionRepository savedPromotionRepository;
     private final RestClient restClient = RestClient.create();
 
     @Value("${promotion.internal-token}")
@@ -36,9 +38,40 @@ public class PromotionService {
     @Value("${auth.internal-token}")
     private String authInternalToken;
 
-    public PromotionService(PromotionRepository promotionRepository, PromotionUsageRepository usageRepository) {
+    public PromotionService(PromotionRepository promotionRepository, PromotionUsageRepository usageRepository, SavedPromotionRepository savedPromotionRepository) {
         this.promotionRepository = promotionRepository;
         this.usageRepository = usageRepository;
+        this.savedPromotionRepository = savedPromotionRepository;
+    }
+
+
+    @Transactional
+    public PromotionResponseDTO saveForCustomer(Long promotionId, Long customerId) {
+        Promotion promotion = getPromotion(promotionId);
+        PromotionStatus status = effectiveStatus(promotion);
+        if (status == PromotionStatus.INACTIVE || status == PromotionStatus.EXPIRED) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Ưu đãi đã hết hiệu lực hoặc đã ngừng.");
+        }
+        if (!savedPromotionRepository.existsByCustomerIdAndPromotionId(customerId, promotionId)) {
+            SavedPromotion saved = new SavedPromotion();
+            saved.setCustomerId(customerId);
+            saved.setPromotion(promotion);
+            savedPromotionRepository.save(saved);
+        }
+        return toResponse(promotion);
+    }
+
+    @Transactional(readOnly = true)
+    public List<PromotionResponseDTO> listSavedForCustomer(Long customerId) {
+        return savedPromotionRepository.findByCustomerIdOrderBySavedAtDesc(customerId).stream()
+                .map(SavedPromotion::getPromotion)
+                .map(this::toResponse)
+                .toList();
+    }
+
+    @Transactional
+    public void removeSavedForCustomer(Long promotionId, Long customerId) {
+        savedPromotionRepository.deleteByCustomerIdAndPromotionId(customerId, promotionId);
     }
 
     public String generateUniqueCode() {

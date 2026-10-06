@@ -23,7 +23,7 @@ import type { Attraction } from '../../types'
 import { Loading } from '../../components/UI'
 import { apiError } from '../../utils/format'
 import { googleMapEmbed, googleMapExternal } from '../../utils/googleMaps'
-import { attractionMetadataKey, loadAttractionExtra } from './ProviderAttractionsPage'
+import { loadAttractionExtra } from './ProviderAttractionsPage'
 
 function ScenicFallback({ variant = 0, large = false }: { variant?: number; large?: boolean }) {
   return <div className={`attraction-detail-scenic variant-${variant % 5} ${large ? 'large' : ''}`}><span className="sky"/><span className="water"/><span className="island"><i/><i/><i/></span></div>
@@ -67,7 +67,6 @@ export default function ProviderAttractionDetailPage() {
     setError('')
     try {
       await attractionApi.remove(item.id)
-      try { localStorage.removeItem(attractionMetadataKey(item.id)) } catch { /* ignore */ }
       navigate('/provider/attractions')
     } catch (e) {
       setError(apiError(e))

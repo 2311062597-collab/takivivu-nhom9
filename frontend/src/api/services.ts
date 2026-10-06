@@ -1,9 +1,13 @@
 import { api } from './client'
 import type { PromotionApiResponse, PromotionRequest } from '../data/promotions'
-import type { AdminDashboard, AdminUser, AiResponse, Attraction, AttractionRequest, AttractionTicketCategory, Booking, BookingCreateRequest, CustomerRegisterRequest, Flight, FlightInventory, FlightRequest, Hotel, HotelRequest, LoginRequest, LoginResponse, NotificationItem, Payment, PendingProvider, Profile, Role, ProviderRegisterRequest, QrPayment, Room, RoomRequest, TicketRequest, TicketType, UpdateProfileRequest, UserStatus, Refund } from '../types'
+import type { AdminDashboard, AdminUser, AiResponse, Attraction, AttractionRequest, AttractionTicketCategory, Booking, BookingCreateRequest, CustomerRegisterRequest, Flight, FlightInventory, FlightRequest, Hotel, HotelRequest, LoginRequest, LoginResponse, NotificationItem, Payment, PendingProvider, Profile, Role, ProviderRegisterRequest, Room, RoomRequest, TicketRequest, TicketType, UpdateProfileRequest, UserStatus, Refund } from '../types'
+
+export type SystemSetting = { khoa: string; giaTri: string | null; kieuDuLieu: string; nhom: string; moTa: string | null; ngayCapNhat: string | null }
 
 export const authApi = {
   login: (body: LoginRequest) => api.post<LoginResponse>('/auth/login', body).then(r => r.data),
+  forgotPassword: (email: string) => api.post<{ message: string }>('/auth/forgot-password', { email }).then(r => r.data),
+  resetPassword: (token: string, newPassword: string) => api.post<{ message: string }>('/auth/reset-password', { token, newPassword }).then(r => r.data),
   registerCustomer: (body: CustomerRegisterRequest) => api.post('/auth/register/customer', body).then(r => r.data),
   registerProvider: (body: ProviderRegisterRequest) => api.post('/auth/register/provider', body).then(r => r.data),
   uploadProviderLicense: (file: File) => {
@@ -25,6 +29,8 @@ export const authApi = {
   adminProviders: (status?: 'PENDING' | 'APPROVED' | 'REJECTED') => api.get<PendingProvider[]>('/auth/admin/providers', { params: status ? { status } : undefined }).then(r => r.data),
   adminCustomers: (status?: UserStatus) => api.get<AdminUser[]>('/auth/admin/customers', { params: status ? { status } : undefined }).then(r => r.data),
   updateCustomerStatus: (id: number, trangThai: Exclude<UserStatus, 'PENDING_APPROVAL'>) => api.put<AdminUser>(`/auth/admin/customers/${id}/status`, { trangThai }).then(r => r.data),
+  adminSettings: () => api.get<SystemSetting[]>('/auth/admin/settings').then(r => r.data),
+  updateAdminSettings: (body: Record<string, string>) => api.put<SystemSetting[]>('/auth/admin/settings', body).then(r => r.data),
 }
 
 export const flightApi = {
@@ -107,16 +113,14 @@ export const bookingApi = {
   byCode: (code: string) => api.get<Booking>(`/bookings/code/${code}`).then(r => r.data),
   cancel: (id: number) => api.put<Booking>(`/bookings/${id}/cancel`).then(r => r.data),
   adminAll: () => api.get<Booking[]>('/bookings/admin').then(r => r.data),
-  confirmBankTransfer: (id: number) => api.put<Booking>(`/bookings/${id}/confirm-bank-transfer`).then(r => r.data),
   providerConfirmPayment: (id: number) => api.put<Booking>(`/bookings/${id}/provider-confirm-payment`).then(r => r.data),
   requestCancellation: (id: number, lyDo: string) => api.post<Booking>(`/bookings/${id}/cancel-request`, {lyDo}).then(r=>r.data),
   resolveCancellation: (id: number, approved: boolean, lyDoTuChoi = '') => api.put<Booking>(`/bookings/${id}/provider-resolve-cancellation`, {approved, lyDoTuChoi}).then(r=>r.data),
 }
 
 export const paymentApi = {
-  create: (bookingId: number, idempotencyKey: string, phuongThuc: 'QR_BANK_TRANSFER' | 'PAYPAL' = 'QR_BANK_TRANSFER') => api.post<Payment>('/payments', { bookingId, idempotencyKey, phuongThuc }).then(r => r.data),
+  create: (bookingId: number, idempotencyKey: string, phuongThuc: 'PAYPAL' | 'PAYOS' = 'PAYPAL') => api.post<Payment>('/payments', { bookingId, idempotencyKey, phuongThuc }).then(r => r.data),
   capturePaypal: (orderId: string) => api.post<Payment>(`/payments/paypal/orders/${encodeURIComponent(orderId)}/capture`).then(r => r.data),
-  createQr: (paymentId: number) => api.post<QrPayment>('/payments/qr/create', { paymentId }).then(r => r.data),
   mine: () => api.get<Payment[]>('/payments/me').then(r => r.data),
   detail: (id: number) => api.get<Payment>(`/payments/${id}`).then(r => r.data),
   status: (id: number) => api.get<Payment>(`/payments/${id}/status`).then(r => r.data),
@@ -151,4 +155,20 @@ export const promotionApi = {
   update: (id: number, body: PromotionRequest) => api.put<PromotionApiResponse>(`/promotions/${id}`, body).then(r => r.data),
   deactivate: (id: number) => api.put<PromotionApiResponse>(`/promotions/${id}/deactivate`).then(r => r.data),
   remove: (id: number) => api.delete<{ deleted: boolean; deactivated: boolean; message: string }>(`/promotions/${id}`).then(r => r.data),
+  saved: () => api.get<PromotionApiResponse[]>('/promotions/saved').then(r => r.data),
+  saveForCustomer: (id: number) => api.post<PromotionApiResponse>(`/promotions/${id}/save`).then(r => r.data),
+  removeSaved: (id: number) => api.delete<void>(`/promotions/${id}/save`).then(r => r.data),
+}
+
+export interface ReviewItem { id:number; userId:number; bookingId:number; targetId:number; soSao:number; noiDung:string; ngayTao:string }
+export const reviewApi = {
+  hotelMine: () => api.get<ReviewItem[]>('/hotels/reviews/me').then(r=>r.data),
+  attractionMine: () => api.get<ReviewItem[]>('/attractions/reviews/me').then(r=>r.data),
+  flightMine: () => api.get<ReviewItem[]>('/flights/reviews/me').then(r=>r.data),
+  hotelProvider: () => api.get<ReviewItem[]>('/hotels/reviews/provider').then(r=>r.data),
+  attractionProvider: () => api.get<ReviewItem[]>('/attractions/reviews/provider').then(r=>r.data),
+  flightProvider: () => api.get<ReviewItem[]>('/flights/reviews/provider').then(r=>r.data),
+  createHotel: (body:{bookingId:number;targetId:number;soSao:number;noiDung:string}) => api.post<ReviewItem>('/hotels/reviews',body).then(r=>r.data),
+  createAttraction: (body:{bookingId:number;targetId:number;soSao:number;noiDung:string}) => api.post<ReviewItem>('/attractions/reviews',body).then(r=>r.data),
+  createFlight: (body:{bookingId:number;targetId:number;soSao:number;noiDung:string}) => api.post<ReviewItem>('/flights/reviews',body).then(r=>r.data),
 }

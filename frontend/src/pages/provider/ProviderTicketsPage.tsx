@@ -27,49 +27,18 @@ export interface TicketExtra {
   images: string[]
 }
 
-export function ticketMetadataKey(id: number) {
-  return `takivivu.ticket.extra.${id}`
-}
-
 export function loadTicketExtra(ticket: TicketType, attraction?: Attraction): TicketExtra {
   const attractionExtra = attraction ? loadAttractionExtra(attraction) : null
-  const defaults: TicketExtra = {
+  return {
     kind: ticket.tenLoaiVe,
     audience: ticket.doiTuongApDung,
-    usageWindow: attraction ? `Trong ngày (${attraction.gioMoCua || '08:00'} - ${attraction.gioDongCua || '22:00'})` : 'Trong ngày (08:00 - 22:00)',
+    usageWindow: attraction ? `Trong ngày (${attraction.gioMoCua || '08:00'} - ${attraction.gioDongCua || '22:00'})` : 'Trong ngày',
     terms: [
       `Áp dụng cho ${ticket.doiTuongApDung.toLowerCase()}.`,
-      'Vé có giá trị sử dụng trong ngày, theo khung giờ hoạt động.',
-      'Vui lòng xuất trình vé (mã QR) khi vào cổng.',
+      'Vé có giá trị theo ngày hiệu lực và khung giờ hoạt động của địa điểm.',
       'Điều kiện hủy/hoàn vé áp dụng theo đơn đặt dịch vụ.',
     ].join('\n'),
     images: attractionExtra?.images?.length ? attractionExtra.images.slice(0, 5) : attraction?.hinhAnh ? [attraction.hinhAnh] : [],
-  }
-  try {
-    const raw = localStorage.getItem(ticketMetadataKey(ticket.id))
-    if (!raw) return defaults
-    const parsed = JSON.parse(raw) as Partial<TicketExtra>
-    return {
-      ...defaults,
-      ...parsed,
-      kind: defaults.kind,
-      audience: defaults.audience,
-      images: parsed.images?.length ? parsed.images : defaults.images,
-    }
-  } catch {
-    return defaults
-  }
-}
-
-export function saveTicketExtra(id: number, extra: TicketExtra) {
-  try {
-    const safe = {
-      ...extra,
-      images: extra.images.filter(src => !src.startsWith('data:') || src.length < 350_000).slice(0, 5),
-    }
-    localStorage.setItem(ticketMetadataKey(id), JSON.stringify(safe))
-  } catch {
-    // Không để metadata frontend làm ảnh hưởng CRUD backend.
   }
 }
 
@@ -133,7 +102,6 @@ export default function ProviderTicketsPage() {
     setError('')
     try {
       await attractionApi.removeTicket(remove.attraction.id, remove.ticket.id)
-      try { localStorage.removeItem(ticketMetadataKey(remove.ticket.id)) } catch { /* ignore */ }
       setRemove(null)
       load()
     } catch (e) {

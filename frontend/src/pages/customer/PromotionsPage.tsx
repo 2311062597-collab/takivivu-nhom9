@@ -1,8 +1,8 @@
 import { BedDouble, CheckCircle2, Copy, Gift, Landmark, Plane, Search, Sparkles, Tag } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { promotionApi } from '../../api/services'
-import { fromPromotionApi, promotionScopeText, promotionStatusText, promotionValueText, savePromotionForCustomer, type Promotion, type PromotionScope } from '../../data/promotions'
+import { fromPromotionApi, promotionScopeText, promotionStatusText, promotionValueText, type Promotion, type PromotionScope } from '../../data/promotions'
 import { money } from '../../utils/format'
 
 const tabs: Array<{ value: '' | PromotionScope; label: string; icon: typeof Gift }> = [
@@ -22,6 +22,7 @@ function PromoArt({ item }: { item: Promotion }) {
 }
 
 export default function PromotionsPage() {
+  const navigate = useNavigate()
   const [items, setItems] = useState<Promotion[]>([])
   const [category, setCategory] = useState<'' | PromotionScope>('')
   const [query, setQuery] = useState('')
@@ -54,7 +55,7 @@ export default function PromotionsPage() {
   const counts = useMemo(() => ({ ALL: items.length, FLIGHT: items.filter(x => x.scope === 'FLIGHT').length, HOTEL: items.filter(x => x.scope === 'HOTEL').length, ATTRACTION: items.filter(x => x.scope === 'ATTRACTION').length }), [items])
 
   const copyCode = async (item: Promotion) => {
-    savePromotionForCustomer(item.id)
+    await promotionApi.saveForCustomer(item.id)
     try { await navigator.clipboard.writeText(item.code) } catch { /* clipboard permission */ }
     setClaimed(item); setCodeError('')
   }
@@ -84,9 +85,9 @@ export default function PromotionsPage() {
       <div className="promotions-tabs-v4 promo-sample-tabs">{tabs.map(tab => { const Icon = tab.icon; const count = tab.value ? counts[tab.value] : counts.ALL; return <button key={tab.label} className={category === tab.value ? 'active' : ''} onClick={() => setCategory(tab.value)}><Icon/>{tab.label}<b>{count}</b></button> })}</div>
 
       {loading ? <div className="promo-loading-skeleton"><i/><i/><i/></div> : error ? <div className="promotions-backend-state-v4 error"><strong>Không thể tải ưu đãi</strong><p>{error}</p><button onClick={() => void load()}>Thử lại</button></div> : items.length === 0 ? <div className="promotions-backend-state-v4"><Gift/><strong>Chưa có ưu đãi đang hoạt động</strong><p>Ưu đãi ACTIVE từ nhà cung cấp sẽ xuất hiện tại đây.</p></div> : <>
-        <section className="promotions-featured-v4 promo-sample-featured"><div className="promotions-section-head-v4"><div><span>Ưu đãi nổi bật</span></div><button className="promo-see-all" onClick={() => setCategory('')}>Xem tất cả →</button></div><div className="promotions-featured-grid-v4">{featured.map(item => <article key={item.id}><PromoArt item={item}/><div className="promotions-featured-body-v4"><h3>{item.name}</h3><p>{item.description || `Ưu đãi từ ${item.providerName}`}</p><div className="promo-card-meta-v4"><span>HSD: {new Date(item.endDate).toLocaleDateString('vi-VN')}</span></div><div className="promo-card-actions-v4"><button onClick={() => void copyCode(item)}>Lấy mã</button><Link to={`/promotions/${item.id}`}>Chi tiết</Link></div></div></article>)}</div></section>
+        <section className="promotions-featured-v4 promo-sample-featured"><div className="promotions-section-head-v4"><div><span>Ưu đãi nổi bật</span></div><button className="promo-see-all" onClick={() => setCategory('')}>Xem tất cả →</button></div><div className="promotions-featured-grid-v4">{featured.map(item => <article key={item.id} className="promo-clickable-card" onClick={() => navigate(`/promotions/${item.id}`)}><PromoArt item={item}/><div className="promotions-featured-body-v4"><h3>{item.name}</h3><p>{item.description || `Ưu đãi từ ${item.providerName}`}</p><div className="promo-card-meta-v4"><span>HSD: {new Date(item.endDate).toLocaleDateString('vi-VN')}</span></div><div className="promo-card-actions-v4"><button onClick={(event) => { event.stopPropagation(); void copyCode(item) }}>Lấy mã</button><Link onClick={(event) => event.stopPropagation()} to={`/promotions/${item.id}`}>Chi tiết</Link></div></div></article>)}</div></section>
 
-        <section className="promo-all-section"><div className="promotions-section-head-v4"><div><span>Tất cả ưu đãi</span></div></div><div className="promo-all-grid">{pagedItems.map(item => { const Icon = item.scope === 'FLIGHT' ? Plane : item.scope === 'HOTEL' ? BedDouble : Landmark; return <article key={item.id} className="promo-compact-card"><div className="promo-compact-icon">{item.imageUrl ? <img src={item.imageUrl} alt={item.name}/> : <Icon/>}</div><div className="promo-compact-main"><h3>{item.name}</h3><p>{promotionScopeText(item.scope)}</p><div className="promo-compact-meta"><code>{item.code}</code><small>HSD: {new Date(item.endDate).toLocaleDateString('vi-VN')}</small></div></div><button onClick={() => void copyCode(item)}>Lấy mã</button></article> })}</div>{totalPages > 1 && <nav className="promo-pagination" aria-label="Phân trang ưu đãi"><button disabled={page === 1} onClick={() => setPage(p => Math.max(1, p - 1))}>‹</button>{Array.from({ length: totalPages }, (_, i) => i + 1).map(n => <button key={n} className={page === n ? 'active' : ''} onClick={() => setPage(n)}>{n}</button>)}<button disabled={page === totalPages} onClick={() => setPage(p => Math.min(totalPages, p + 1))}>›</button></nav>}</section>
+        <section className="promo-all-section"><div className="promotions-section-head-v4"><div><span>Tất cả ưu đãi</span></div></div><div className="promo-all-grid">{pagedItems.map(item => { const Icon = item.scope === 'FLIGHT' ? Plane : item.scope === 'HOTEL' ? BedDouble : Landmark; return <article key={item.id} className="promo-compact-card promo-clickable-card" onClick={() => navigate(`/promotions/${item.id}`)}><div className="promo-compact-icon">{item.imageUrl ? <img src={item.imageUrl} alt={item.name}/> : <Icon/>}</div><div className="promo-compact-main"><h3>{item.name}</h3><p>{promotionScopeText(item.scope)}</p><div className="promo-compact-meta"><code>{item.code}</code><small>HSD: {new Date(item.endDate).toLocaleDateString('vi-VN')}</small></div></div><button onClick={(event) => { event.stopPropagation(); void copyCode(item) }}>Lấy mã</button></article> })}</div>{totalPages > 1 && <nav className="promo-pagination" aria-label="Phân trang ưu đãi"><button disabled={page === 1} onClick={() => setPage(p => Math.max(1, p - 1))}>‹</button>{Array.from({ length: totalPages }, (_, i) => i + 1).map(n => <button key={n} className={page === n ? 'active' : ''} onClick={() => setPage(n)}>{n}</button>)}<button disabled={page === totalPages} onClick={() => setPage(p => Math.min(totalPages, p + 1))}>›</button></nav>}</section>
       </>}
     </div>
 
