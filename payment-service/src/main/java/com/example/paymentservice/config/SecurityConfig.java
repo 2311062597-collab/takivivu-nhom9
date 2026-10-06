@@ -50,6 +50,7 @@ public class SecurityConfig {
                                         "/api/payments/internal/**",
                                         "/api/payments/webhook",
                                         "/api/payments/paypal/webhook"
+                                        ,"/api/payments/payos/webhook"
                                 )
                                 .permitAll()
 

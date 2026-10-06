@@ -57,4 +57,8 @@ public class PaymentResponseDTO {
     private LocalDateTime ngayTao;
 
     private LocalDateTime thanhToanLuc;
+
+    private String payosPaymentLinkId;
+
+    private String payosCheckoutUrl;
 }

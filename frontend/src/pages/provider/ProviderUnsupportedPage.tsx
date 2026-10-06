@@ -1,0 +1,3 @@
+import { AlertTriangle } from 'lucide-react'
+import { PageTitle } from '../../components/UI'
+export default function ProviderUnsupportedPage({kind}:{kind:'orders'|'revenue'}){const orders=kind==='orders';return <><PageTitle title={orders?'Đơn đặt dịch vụ':'Thống kê & Doanh thu'} subtitle={orders?'Giao diện theo Figma Provider.':'Theo dõi hiệu quả kinh doanh dịch vụ.'}/><div className="unsupported"><AlertTriangle/><h2>Backend Provider chưa có API cho phần này</h2><p>{orders?'BookingController hiện có /api/bookings/me cho CUSTOMER và không có endpoint lấy booking theo Provider.':'Backend hiện chưa có endpoint thống kê/revenue cho nhà cung cấp.'}</p><p>Frontend không tạo mock data để tránh hiển thị số liệu không đúng.</p></div></>}

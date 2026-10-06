@@ -92,6 +92,12 @@ public class Payment {
     @Column(name = "paypal_amount", precision = 15, scale = 2)
     private BigDecimal paypalAmount;
 
+    @Column(name = "payos_payment_link_id", length = 100)
+    private String payosPaymentLinkId;
+
+    @Column(name = "payos_checkout_url", columnDefinition = "TEXT")
+    private String payosCheckoutUrl;
+
     @Column(name = "het_han_luc")
     private LocalDateTime hetHanLuc;
 

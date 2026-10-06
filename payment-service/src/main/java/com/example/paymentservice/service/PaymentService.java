@@ -31,6 +31,7 @@ public class PaymentService {
 
     private final RestClient restClient;
     private final ObjectMapper objectMapper;
+    private final PayosClient payosClient;
 
     @Value("${service.booking.url}")
     private String bookingUrl;
@@ -93,7 +94,8 @@ public class PaymentService {
             PaymentRepository paymentRepository,
             GiaoDichThanhToanRepository giaoDichRepository,
             HoanTienRepository hoanTienRepository,
-            ObjectMapper objectMapper
+            ObjectMapper objectMapper,
+            PayosClient payosClient
     ) {
 
         this.paymentRepository =
@@ -107,6 +109,7 @@ public class PaymentService {
 
         this.objectMapper =
                 objectMapper;
+        this.payosClient = payosClient;
 
         this.restClient =
                 RestClient.create();
@@ -125,8 +128,12 @@ public class PaymentService {
 
         PhuongThucThanhToan phuongThuc =
                 request.getPhuongThuc() == null
-                        ? PhuongThucThanhToan.QR_BANK_TRANSFER
+                        ? PhuongThucThanhToan.PAYPAL
                         : request.getPhuongThuc();
+
+        if (phuongThuc != PhuongThucThanhToan.PAYPAL && phuongThuc != PhuongThucThanhToan.PAYOS) {
+            throw new RuntimeException("Phương thức thanh toán không được hỗ trợ");
+        }
 
         if (request.getIdempotencyKey() != null
                 && !request.getIdempotencyKey().isBlank()) {
@@ -235,6 +242,12 @@ public class PaymentService {
             return taoPaymentResponse(paymentRepository.save(payment));
         }
 
+        if (phuongThuc == PhuongThucThanhToan.PAYOS) {
+            payment = paymentRepository.save(payment);
+            payosClient.create(payment);
+            return taoPaymentResponse(paymentRepository.save(payment));
+        }
+
         throw new RuntimeException("Phương thức thanh toán chưa được hỗ trợ");
     }
 
@@ -266,6 +279,8 @@ public class PaymentService {
                     "Chỉ Payment PENDING mới được tạo QR"
             );
         }
+
+        if (payment.getPhuongThuc() == PhuongThucThanhToan.PAYOS) payosClient.cancel(payment);
 
         if (payment.getHetHanLuc() != null
                 && payment
@@ -889,6 +904,38 @@ public class PaymentService {
         } catch (Exception ignored) {
             // Payment đã SUCCESS; Booking có thể retry đồng bộ sau.
         }
+    }
+
+    @Transactional
+    public Map<String, Object> xuLyPayosWebhook(JsonNode webhook) {
+        JsonNode data = payosClient.verifiedData(webhook);
+        // PayOS sends a signed sample when the webhook URL is registered.
+        if (data.path("orderCode").asLong() == 123 && paymentRepository.findById(123L).isEmpty())
+            return Map.of("success", true);
+        Payment payment = paymentRepository.findById(data.path("orderCode").asLong())
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy thanh toán PayOS"));
+        if (payment.getPhuongThuc() != PhuongThucThanhToan.PAYOS)
+            throw new IllegalArgumentException("Phương thức thanh toán không khớp");
+        if (payment.getSoTien().compareTo(new BigDecimal(data.path("amount").asText("0"))) != 0
+                || !"VND".equals(data.path("currency").asText()))
+            throw new IllegalArgumentException("Số tiền hoặc tiền tệ PayOS không khớp");
+        if (payment.getPayosPaymentLinkId() == null || !payment.getPayosPaymentLinkId().equals(data.path("paymentLinkId").asText()))
+            throw new IllegalArgumentException("Liên kết thanh toán PayOS không khớp");
+        if (!webhook.path("success").asBoolean() || !"00".equals(data.path("code").asText()))
+            return Map.of("success", true);
+        if (payment.getTrangThai() == TrangThaiPayment.SUCCESS) return Map.of("success", true);
+        if (payment.getTrangThai() != TrangThaiPayment.PENDING)
+            throw new IllegalStateException("Thanh toán PayOS không còn chờ xử lý");
+        String reference = data.path("reference").asText();
+        payment.setTransactionCode(reference);
+        payment.setTrangThai(TrangThaiPayment.SUCCESS);
+        payment.setThanhToanLuc(LocalDateTime.now());
+        paymentRepository.save(payment);
+        guiThongBaoSauCommit(payment.getKhachHangId(), "PAYMENT_SUCCESS", "Thanh toán PayOS thành công",
+                "Thanh toán PayOS cho Booking " + payment.getMaBooking() + " đã được xác nhận.",
+                "PAYOS_SUCCESS:" + payment.getId() + ":" + reference);
+        try { thongBaoBookingThanhCong(payment.getBookingId()); } catch (Exception ignored) { }
+        return Map.of("success", true);
     }
 
     private BigDecimal doiVndSangPaypal(BigDecimal vnd) {
@@ -1822,7 +1869,9 @@ public class PaymentService {
                 payment.getPaypalAmount(),
                 payment.getHetHanLuc(),
                 payment.getNgayTao(),
-                payment.getThanhToanLuc()
+                payment.getThanhToanLuc(),
+                payment.getPayosPaymentLinkId(),
+                payment.getPayosCheckoutUrl()
         );
     }
 

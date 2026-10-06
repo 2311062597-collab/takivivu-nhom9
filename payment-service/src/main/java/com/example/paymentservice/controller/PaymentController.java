@@ -2,6 +2,7 @@ package com.example.paymentservice.controller;
 
 import com.example.paymentservice.dto.*;
 import com.example.paymentservice.service.PaymentService;
+import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -81,28 +82,6 @@ public class PaymentController {
     }
 
     // =========================================================
-    // QR
-    // =========================================================
-
-    @PostMapping("/qr/create")
-    public ResponseEntity<QrResponseDTO>
-    taoQr(
-            @Valid
-            @RequestBody TaoQrRequestDTO request,
-
-            Authentication authentication
-    ) {
-
-        return ResponseEntity.ok(
-                paymentService.taoQr(
-                        request.getPaymentId(),
-                        layUserId(authentication),
-                        layRole(authentication)
-                )
-        );
-    }
-
-    // =========================================================
     // SEPAY WEBHOOK
     // =========================================================
 
@@ -130,6 +109,11 @@ public class PaymentController {
     // =========================================================
     // PAYPAL
     // =========================================================
+
+    @PostMapping("/payos/webhook")
+    public ResponseEntity<Map<String, Object>> payosWebhook(@RequestBody JsonNode webhook) {
+        return ResponseEntity.ok(paymentService.xuLyPayosWebhook(webhook));
+    }
 
     @PostMapping("/paypal/orders/{orderId}/capture")
     public ResponseEntity<PaymentResponseDTO> capturePaypal(

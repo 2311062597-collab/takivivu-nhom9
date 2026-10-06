@@ -551,6 +551,23 @@ public class AuthService {
                 request.getDiaChi()
         );
 
+        if (user.getVaiTro() == VaiTro.PROVIDER) {
+            providerProfileRepository.findByNguoiDungId(user.getId()).ifPresent(providerProfile -> {
+                if (request.getTenDoanhNghiep() != null && !request.getTenDoanhNghiep().isBlank()) providerProfile.setTenDoanhNghiep(request.getTenDoanhNghiep().trim());
+                providerProfile.setTenVietTat(request.getTenVietTat());
+                providerProfile.setMoTa(request.getMoTaDoanhNghiep());
+                providerProfile.setMaSoThue(request.getMaSoThue());
+                providerProfile.setNamThanhLap(request.getNamThanhLap());
+                providerProfile.setWebsite(request.getWebsite());
+                providerProfile.setEmailDoanhNghiep(request.getEmailDoanhNghiep());
+                providerProfile.setSoDienThoaiDoanhNghiep(request.getSoDienThoaiDoanhNghiep());
+                providerProfile.setDiaChiDoanhNghiep(request.getDiaChiDoanhNghiep());
+                providerProfile.setAnhBia(request.getAnhBia());
+                providerProfile.setLogo(request.getLogo());
+                providerProfileRepository.save(providerProfile);
+            });
+        }
+
         User userDaLuu =
                 userRepository.save(user);
 
@@ -998,17 +1015,31 @@ public class AuthService {
     private ThongTinCaNhanResponseDTO taoThongTinCaNhanResponse(
             User user
     ) {
-
-        return new ThongTinCaNhanResponseDTO(
-                user.getId(),
-                user.getHoTen(),
-                user.getEmail(),
-                user.getSoDienThoai(),
-                user.getVaiTro(),
-                user.getTrangThai(),
-                user.getAnhDaiDien(),
-                user.getDiaChi()
-        );
+        ThongTinCaNhanResponseDTO response = new ThongTinCaNhanResponseDTO();
+        response.setId(user.getId());
+        response.setHoTen(user.getHoTen());
+        response.setEmail(user.getEmail());
+        response.setSoDienThoai(user.getSoDienThoai());
+        response.setVaiTro(user.getVaiTro());
+        response.setTrangThai(user.getTrangThai());
+        response.setAnhDaiDien(user.getAnhDaiDien());
+        response.setDiaChi(user.getDiaChi());
+        if (user.getVaiTro() == VaiTro.PROVIDER) {
+            providerProfileRepository.findByNguoiDungId(user.getId()).ifPresent(profile -> {
+                response.setTenDoanhNghiep(profile.getTenDoanhNghiep());
+                response.setTenVietTat(profile.getTenVietTat());
+                response.setMoTaDoanhNghiep(profile.getMoTa());
+                response.setMaSoThue(profile.getMaSoThue());
+                response.setNamThanhLap(profile.getNamThanhLap());
+                response.setWebsite(profile.getWebsite());
+                response.setEmailDoanhNghiep(profile.getEmailDoanhNghiep());
+                response.setSoDienThoaiDoanhNghiep(profile.getSoDienThoaiDoanhNghiep());
+                response.setDiaChiDoanhNghiep(profile.getDiaChiDoanhNghiep());
+                response.setAnhBia(profile.getAnhBia());
+                response.setLogo(profile.getLogo());
+            });
+        }
+        return response;
     }
 
     private LoaiNhaCungCap layLoaiNhaCungCap(

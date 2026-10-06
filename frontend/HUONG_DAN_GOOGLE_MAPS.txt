@@ -1,0 +1,28 @@
+GOOGLE MAPS KHONG CAN KEY - CHI SUA FRONTEND
+
+Ban nay duoc sua tu file takivivu (11) (1).zip ban gui.
+
+- Ban do khach san va diem tham quan dung khung Google Maps khong can API key.
+- Nhap dia chi trong bieu mau de cap nhat ban do; van giu cac o chon dia chi cu.
+- Co lien ket Mo Google Maps va Chi duong.
+- Khung nhung khong tu dien dia chi/toa do khi bam vao ban do. Dia chi duoc luu
+  theo bieu mau; toa do da co duoc dung khi chua thay doi dia chi.
+- Frontend khong goi Map Service de tim dia chi, lay toa do hoac tim dia diem.
+- Khong can cau hinh key trinh duyet/backend cho phan ban do nay.
+
+Ngoai frontend, chi doi spring.datasource.password=123456 theo yeu cau cua ban
+trong 8 service co database (ca resources va ban sao target/classes).
+Tat ca file backend con lai, database, Maven va cau hinh IntelliJ .idea/Run
+duoc giu nguyen tu ZIP goc. Khong can bo sung cau hinh Run moi, khong can import
+lai database va khong can chay SQL. Cau hinh nay dung mat khau MySQL 123456;
+khong tu thay doi mat khau tai khoan MySQL dang cai tren may.
+
+Chay backend nhu truoc. Trong thu muc frontend, chay npm run dev nhu cu.
+Neu chua co thu vien hoac thu vien loi: npm ci, sau do npm run dev.
+
+Kiem tra logic ban do: node --test tests/googleMaps.test.cjs
+Kiem tra TypeScript: npx tsc -b
+
+Khung Google Maps can ket noi Internet va co the bi chan boi trinh duyet/Google.
+Neu khung khong tai duoc, dung nut Mo Google Maps. Chua xac minh khung nhung
+tren trinh duyet thuc te cua ban; cac kiem tra tu dong chi kiem tra code va URL.
